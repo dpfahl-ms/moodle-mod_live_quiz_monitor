@@ -10,8 +10,11 @@
 }
 
 .livequizmonitor-tile {
-    border-left: 4px solid transparent;
     height: 100%;
+}
+
+.livequizmonitor-tile.border-left {
+    border-left-width: 3px !important;
 }
 
 .livequizmonitor-tile-label {
@@ -31,32 +34,18 @@
     color: var(--bs-secondary-color, #6c757d);
 }
 
-.livequizmonitor-status-inprogress,
-.livequizmonitor-tile.livequizmonitor-status-inprogress {
-    border-left-color: var(--bs-warning, #ffc107);
+.livequizmonitor-progress {
+    min-width: 8rem;
 }
 
-.livequizmonitor-status-notstarted,
-.livequizmonitor-tile.livequizmonitor-status-notstarted {
-    border-left-color: var(--bs-secondary, #6c757d);
+.livequizmonitor-progress .progress {
+    height: 0.75rem;
+    margin-bottom: 0.25rem;
 }
 
-.livequizmonitor-status-completed,
-.livequizmonitor-tile.livequizmonitor-status-completed {
-    border-left-color: var(--bs-success, #198754);
-}
-
-.badge.livequizmonitor-status-inprogress {
-    background-color: var(--bs-warning, #ffc107);
-    color: var(--bs-dark, #212529);
-}
-
-.badge.livequizmonitor-status-notstarted {
-    background-color: var(--bs-secondary, #6c757d);
-}
-
-.badge.livequizmonitor-status-completed {
-    background-color: var(--bs-success, #198754);
+.livequizmonitor-progress-label {
+    display: block;
+    font-size: 0.8125rem;
 }
 
 .livequizmonitor-timer {

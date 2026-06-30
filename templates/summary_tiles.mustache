@@ -1,15 +1,6 @@
 <div class="livequizmonitor-summary-tiles row g-3 mb-4" data-region="summary-tiles">
     <div class="col-md-4">
-        <div class="card livequizmonitor-tile {{summary.inprogress.statusclass}}">
-            <div class="card-body">
-                <div class="livequizmonitor-tile-label">{{summary.inprogress.label}}</div>
-                <div class="livequizmonitor-tile-count" data-summary="inprogress">{{summary.inprogress.count}}</div>
-                <div class="livequizmonitor-tile-percent" data-summary-pct="inprogress">{{summary.inprogress.percent}}%</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card livequizmonitor-tile {{summary.notstarted.statusclass}}">
+        <div class="card livequizmonitor-tile border-left {{summary.notstarted.statusclass}}">
             <div class="card-body">
                 <div class="livequizmonitor-tile-label">{{summary.notstarted.label}}</div>
                 <div class="livequizmonitor-tile-count" data-summary="notstarted">{{summary.notstarted.count}}</div>
@@ -18,7 +9,16 @@
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card livequizmonitor-tile {{summary.completed.statusclass}}">
+        <div class="card livequizmonitor-tile border-left {{summary.inprogress.statusclass}}">
+            <div class="card-body">
+                <div class="livequizmonitor-tile-label">{{summary.inprogress.label}}</div>
+                <div class="livequizmonitor-tile-count" data-summary="inprogress">{{summary.inprogress.count}}</div>
+                <div class="livequizmonitor-tile-percent" data-summary-pct="inprogress">{{summary.inprogress.percent}}%</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card livequizmonitor-tile border-left {{summary.completed.statusclass}}">
             <div class="card-body">
                 <div class="livequizmonitor-tile-label">{{summary.completed.label}}</div>
                 <div class="livequizmonitor-tile-count" data-summary="completed">{{summary.completed.count}}</div>

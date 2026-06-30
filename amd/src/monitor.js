@@ -41,6 +41,9 @@ class MonitorComponent extends BaseComponent {
             STUDENTROW: 'tr[data-userid]',
             STATUSBADGE: '.badge',
             PROGRESS: '[data-field="progress"]',
+            PROGRESSBAR: '[data-field="progress"] .progress-bar',
+            PROGRESSCONTAINER: '[data-field="progress"] .progress[role="progressbar"]',
+            PROGRESSLABEL: '[data-field="progress"] .livequizmonitor-progress-label',
             TIMER: '[data-field="timer"]',
         };
         this.pollTimer = null;
@@ -78,7 +81,10 @@ class MonitorComponent extends BaseComponent {
             {watch: 'students:updated', handler: this.renderStudents},
             {watch: 'students.timeremaining:updated', handler: this.renderStudents},
             {watch: 'students.progresstext:updated', handler: this.renderStudents},
+            {watch: 'students.progresspercent:updated', handler: this.renderStudents},
+            {watch: 'students.progressbarclass:updated', handler: this.renderStudents},
             {watch: 'students.statuslabel:updated', handler: this.renderStudents},
+            {watch: 'students.statusclass:updated', handler: this.renderStudents},
         ];
     }
 
@@ -230,7 +236,25 @@ class MonitorComponent extends BaseComponent {
             }
             const progress = row.querySelector(this.selectors.PROGRESS);
             if (progress) {
-                progress.textContent = student.progresstext;
+                const bar = row.querySelector(this.selectors.PROGRESSBAR);
+                const container = row.querySelector(this.selectors.PROGRESSCONTAINER);
+                const label = row.querySelector(this.selectors.PROGRESSLABEL);
+                const percent = student.progresspercent ?? 0;
+
+                if (bar) {
+                    bar.style.width = `${percent}%`;
+                    bar.className = `progress-bar ${student.progressbarclass ?? ''}`.trim();
+                }
+                if (container) {
+                    container.setAttribute('aria-valuenow', String(percent));
+                    if (student.progresstext) {
+                        container.setAttribute('aria-label', student.progresstext);
+                    }
+                }
+                if (label) {
+                    label.textContent = student.progresstext ?? '';
+                    label.classList.toggle('d-none', !student.progresstext);
+                }
             }
             const timer = row.querySelector(this.selectors.TIMER);
             if (timer) {

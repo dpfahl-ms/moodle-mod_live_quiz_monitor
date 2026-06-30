@@ -33,19 +33,19 @@ const emptySummary = () => ({
         count: 0,
         percent: 0,
         label: '',
-        statusclass: 'livequizmonitor-status-notstarted',
+        statusclass: 'border-secondary',
     },
     inprogress: {
         count: 0,
         percent: 0,
         label: '',
-        statusclass: 'livequizmonitor-status-inprogress',
+        statusclass: 'border-warning',
     },
     completed: {
         count: 0,
         percent: 0,
         label: '',
-        statusclass: 'livequizmonitor-status-completed',
+        statusclass: 'border-success',
     },
 });
 

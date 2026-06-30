@@ -27,3 +27,7 @@ Feature: Live quiz monitor report
     And I follow "Live Monitor"
     Then I should see "Live Monitor"
     And I should see "Sam Student"
+    And I should see "Not started"
+    And I should see "In progress"
+    And I should see "Completed"
+    And "div.livequizmonitor-progress .progress-bar" "css_element" should exist

@@ -69,6 +69,10 @@ final class get_monitor_state_test extends advanced_testcase {
         $this->assertArrayHasKey('students', $result);
         $this->assertCount(1, $result['students']);
         $this->assertSame('inprogress', $result['students'][0]['status']);
+        $this->assertSame('badge-warning', $result['students'][0]['statusclass']);
+        $this->assertSame('bg-warning', $result['students'][0]['progressbarclass']);
+        $this->assertArrayHasKey('progresspercent', $result['students'][0]);
+        $this->assertSame('border-warning', $result['summary']['inprogress']['statusclass']);
     }
 
     /**

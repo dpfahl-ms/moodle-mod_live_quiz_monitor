@@ -21,7 +21,18 @@
                 {{#showemailcolumn}}
                 <td>{{email}}</td>
                 {{/showemailcolumn}}
-                <td data-field="progress">{{progresstext}}</td>
+                <td data-field="progress">
+                    <div class="livequizmonitor-progress">
+                        <div class="progress" role="progressbar"
+                             aria-valuenow="{{progresspercent}}" aria-valuemin="0" aria-valuemax="100"
+                             aria-label="{{progresstext}}">
+                            <div class="progress-bar {{progressbarclass}}" style="width: {{progresspercent}}%"></div>
+                        </div>
+                        {{#progresstext}}
+                        <small class="livequizmonitor-progress-label text-muted">{{progresstext}}</small>
+                        {{/progresstext}}
+                    </div>
+                </td>
                 <td>
                     {{#hastimer}}
                     <span class="livequizmonitor-timer" data-field="timer" data-timeremaining="{{timeremaining}}">{{timeremainingdisplay}}</span>

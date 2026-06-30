@@ -114,6 +114,18 @@ final class monitor_manager_test extends advanced_testcase {
         $this->assertContains('Adam Alpha', $bystatus[monitor_manager::STATUS_COMPLETED]);
         $this->assertContains('Bert Beta', $bystatus[monitor_manager::STATUS_INPROGRESS]);
         $this->assertContains('Diane Delta', $bystatus[monitor_manager::STATUS_NOTSTARTED]);
+
+        foreach ($state->students as $row) {
+            $presentation = monitor_manager::get_status_presentation($row->status);
+            $this->assertSame($presentation['badgeclass'], $row->statusclass);
+            $this->assertSame($presentation['progressbarclass'], $row->progressbarclass);
+            $expectedpercent = monitor_manager::compute_progress_percent(
+                $row->status,
+                $row->progressanswered,
+                $row->progresstotal
+            );
+            $this->assertSame($expectedpercent, $row->progresspercent);
+        }
     }
 
     /**
@@ -159,6 +171,41 @@ final class monitor_manager_test extends advanced_testcase {
         $this->assertSame(3, $state->totalstudents);
         $this->assertSame(3, $total);
         $this->assertSame(100, $summary->notstarted->percent);
+        $this->assertSame('border-secondary', $summary->notstarted->statusclass);
+        $this->assertSame('border-warning', $summary->inprogress->statusclass);
+        $this->assertSame('border-success', $summary->completed->statusclass);
+    }
+
+    /**
+     * Progress percent rules per status.
+     */
+    public function test_progress_percent_by_status(): void {
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        [$quiz, $cm, $quizgenerator] = $this->create_quiz_with_question($course);
+
+        $notstarted = $generator->create_user();
+        $inprogress = $generator->create_user();
+        $completed = $generator->create_user();
+        $generator->enrol_user($notstarted->id, $course->id, 'student');
+        $generator->enrol_user($inprogress->id, $course->id, 'student');
+        $generator->enrol_user($completed->id, $course->id, 'student');
+
+        $this->create_quiz_attempt($quizgenerator, $quiz->id, $inprogress->id, quiz_attempt::IN_PROGRESS);
+        $this->create_quiz_attempt($quizgenerator, $quiz->id, $completed->id, quiz_attempt::FINISHED);
+
+        $state = monitor_manager::get_state($course, $cm, $quiz, 0);
+        $byuserid = [];
+        foreach ($state->students as $row) {
+            $byuserid[$row->status] = $row;
+        }
+
+        $this->assertSame(0, $byuserid[monitor_manager::STATUS_NOTSTARTED]->progresspercent);
+        $this->assertSame(100, $byuserid[monitor_manager::STATUS_COMPLETED]->progresspercent);
+        $this->assertGreaterThanOrEqual(0, $byuserid[monitor_manager::STATUS_INPROGRESS]->progresspercent);
+        $this->assertLessThanOrEqual(100, $byuserid[monitor_manager::STATUS_INPROGRESS]->progresspercent);
     }
 
     /**

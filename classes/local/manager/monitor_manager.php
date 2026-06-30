@@ -141,6 +141,53 @@ class monitor_manager {
     }
 
     /**
+     * Bootstrap presentation classes for a monitor status.
+     *
+     * @param string $status Monitor status constant.
+     * @return array{badgeclass: string, progressbarclass: string, tileborderclass: string}
+     */
+    public static function get_status_presentation(string $status): array {
+        switch ($status) {
+            case self::STATUS_INPROGRESS:
+                return [
+                    'badgeclass' => 'badge-warning',
+                    'progressbarclass' => 'bg-warning',
+                    'tileborderclass' => 'border-warning',
+                ];
+            case self::STATUS_COMPLETED:
+                return [
+                    'badgeclass' => 'badge-success',
+                    'progressbarclass' => 'bg-success',
+                    'tileborderclass' => 'border-success',
+                ];
+            default:
+                return [
+                    'badgeclass' => 'badge-secondary',
+                    'progressbarclass' => 'bg-secondary',
+                    'tileborderclass' => 'border-secondary',
+                ];
+        }
+    }
+
+    /**
+     * Compute progress bar fill percentage for a student row.
+     *
+     * @param string $status Monitor status.
+     * @param int $answered Questions answered.
+     * @param int $total Total questions in quiz.
+     * @return int Percentage 0–100.
+     */
+    public static function compute_progress_percent(string $status, int $answered, int $total): int {
+        if ($status === self::STATUS_COMPLETED) {
+            return 100;
+        }
+        if ($status === self::STATUS_NOTSTARTED || $total <= 0) {
+            return 0;
+        }
+        return (int) round($answered / $total * 100);
+    }
+
+    /**
      * Map a Moodle attempt state to monitor status.
      *
      * @param stdClass|null $attempt Relevant attempt or null.
@@ -214,6 +261,9 @@ class monitor_manager {
             ]);
         }
 
+        $presentation = self::get_status_presentation($status);
+        $progresspercent = self::compute_progress_percent($status, $answered, $totalquestions);
+
         return (object) [
             'userid' => (int) $user->id,
             'fullname' => fullname($user),
@@ -221,7 +271,9 @@ class monitor_manager {
             'showemail' => $showemail,
             'status' => $status,
             'statuslabel' => $statuslabel,
-            'statusclass' => 'livequizmonitor-status-' . $status,
+            'statusclass' => $presentation['badgeclass'],
+            'progressbarclass' => $presentation['progressbarclass'],
+            'progresspercent' => $progresspercent,
             'attemptid' => $attempt ? (int) $attempt->id : null,
             'progressanswered' => $answered,
             'progresstotal' => $totalquestions,
@@ -340,25 +392,20 @@ class monitor_manager {
             return (int) round($count / $total * 100);
         };
 
+        $buildbucket = static function(string $status, string $labelkey) use ($counts, $percent): stdClass {
+            $presentation = self::get_status_presentation($status);
+            return (object) [
+                'count' => $counts[$status],
+                'percent' => $percent($counts[$status]),
+                'label' => get_string($labelkey, 'quiz_livequizmonitor'),
+                'statusclass' => $presentation['tileborderclass'],
+            ];
+        };
+
         return (object) [
-            'notstarted' => (object) [
-                'count' => $counts[self::STATUS_NOTSTARTED],
-                'percent' => $percent($counts[self::STATUS_NOTSTARTED]),
-                'label' => get_string('summary:notstarted', 'quiz_livequizmonitor'),
-                'statusclass' => 'livequizmonitor-status-notstarted',
-            ],
-            'inprogress' => (object) [
-                'count' => $counts[self::STATUS_INPROGRESS],
-                'percent' => $percent($counts[self::STATUS_INPROGRESS]),
-                'label' => get_string('summary:inprogress', 'quiz_livequizmonitor'),
-                'statusclass' => 'livequizmonitor-status-inprogress',
-            ],
-            'completed' => (object) [
-                'count' => $counts[self::STATUS_COMPLETED],
-                'percent' => $percent($counts[self::STATUS_COMPLETED]),
-                'label' => get_string('summary:completed', 'quiz_livequizmonitor'),
-                'statusclass' => 'livequizmonitor-status-completed',
-            ],
+            'notstarted' => $buildbucket(self::STATUS_NOTSTARTED, 'summary:notstarted'),
+            'inprogress' => $buildbucket(self::STATUS_INPROGRESS, 'summary:inprogress'),
+            'completed' => $buildbucket(self::STATUS_COMPLETED, 'summary:completed'),
         ];
     }
 }
