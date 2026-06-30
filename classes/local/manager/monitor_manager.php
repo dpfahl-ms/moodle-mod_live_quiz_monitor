@@ -132,7 +132,7 @@ class monitor_manager {
             if (in_array($attempt->state, [quiz_attempt::IN_PROGRESS, quiz_attempt::OVERDUE], true)) {
                 return $attempt;
             }
-            if ($attempt->state === quiz_attempt::FINISHED && $latestfinished === null) {
+            if (in_array($attempt->state, [quiz_attempt::FINISHED, quiz_attempt::SUBMITTED], true) && $latestfinished === null) {
                 $latestfinished = $attempt;
             }
         }
@@ -200,7 +200,7 @@ class monitor_manager {
         if (in_array($attempt->state, [quiz_attempt::IN_PROGRESS, quiz_attempt::OVERDUE], true)) {
             return self::STATUS_INPROGRESS;
         }
-        if ($attempt->state === quiz_attempt::FINISHED) {
+        if (in_array($attempt->state, [quiz_attempt::FINISHED, quiz_attempt::SUBMITTED], true)) {
             return self::STATUS_COMPLETED;
         }
         return self::STATUS_NOTSTARTED;
