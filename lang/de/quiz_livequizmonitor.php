@@ -25,6 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['emptycohort'] = 'Für dieses Quiz wurden keine berechtigten Teilnehmenden gefunden.';
+$string['error:usernotvisible'] = 'Die ausgewählte Person ist in dieser Monitor-Ansicht nicht sichtbar.';
 $string['extend:addtime'] = 'Zeit hinzufügen';
 $string['extend:bulklabel'] = 'Zeit verlängern';
 $string['extend:confirm'] = 'Bestätigen — {$a} Min. hinzufügen';
@@ -58,8 +59,24 @@ $string['messageprovider:timeextended'] = 'Benachrichtigung über verlängerte Q
 $string['missinguserid'] = 'Für die Einzelverlängerung muss eine Person ausgewählt werden.';
 $string['noattempttoextend'] = 'Kein laufender Versuch zum Verlängern für {$a}.';
 $string['noextendablelimit'] = 'Zeit kann für {$a} nicht verlängert werden — es gilt kein Zeitlimit.';
+$string['notes:addlabel'] = 'Notiz hinzufügen';
+$string['notes:cancel'] = 'Abbrechen';
+$string['notes:deleted'] = 'Notiz entfernt.';
+$string['notes:editlabel'] = 'Notiz bearbeiten';
+$string['notes:errorload'] = 'Notiz konnte nicht geladen werden.';
+$string['notes:errorsave'] = 'Notiz konnte nicht gespeichert werden.';
+$string['notes:errortoolong'] = 'Die Notiz darf höchstens 2000 Zeichen lang sein.';
+$string['notes:modalbody'] = 'Supervisionsnotiz für diese Person hinzufügen.';
+$string['notes:modaltitle'] = 'Notiz für {$a}';
+$string['notes:save'] = 'Speichern';
+$string['notes:saved'] = 'Notiz gespeichert.';
 $string['pluginname'] = 'Live-Quiz-Monitor';
-$string['privacy:metadata'] = 'Das Live-Quiz-Monitor-Berichtsplugin speichert keine personenbezogenen Daten.';
+$string['privacy:metadata'] = 'Der Live-Quiz-Monitor speichert Supervisionsnotizen zu Teilnehmenden und Quizzes.';
+$string['privacy:metadata:notes'] = 'Supervisionsnotizen aus dem Live-Monitor-Bericht.';
+$string['privacy:metadata:notes:content'] = 'Der Notiztext.';
+$string['privacy:metadata:notes:timemodified'] = 'Zeitpunkt der letzten Änderung.';
+$string['privacy:metadata:notes:userid'] = 'Die Person, auf die sich die Notiz bezieht.';
+$string['privacy:metadata:notes:usermodified'] = 'Die Person, die die Notiz zuletzt bearbeitet hat.';
 $string['progressanswered'] = '{$a->answered} von {$a->total} beantwortet';
 $string['settings:pollinterval'] = 'Aktualisierungsintervall';
 $string['settings:pollinterval_desc'] = 'Wie oft die Live-Monitor-Seite Daten vom Server abruft (Sekunden).';

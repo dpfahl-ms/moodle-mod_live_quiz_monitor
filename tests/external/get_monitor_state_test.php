@@ -85,6 +85,37 @@ final class get_monitor_state_test extends advanced_testcase {
     }
 
     /**
+     * Poll payload includes hasnote on student rows.
+     */
+    public function test_execute_includes_hasnote(): void {
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $teacher = $generator->create_user();
+        $student = $generator->create_user();
+        $generator->enrol_user($teacher->id, $course->id, 'editingteacher');
+        $generator->enrol_user($student->id, $course->id, 'student');
+
+        $quizgenerator = $generator->get_plugin_generator('mod_quiz');
+        $quiz = $quizgenerator->create_instance(['course' => $course->id]);
+        $cm = get_coursemodule_from_instance('quiz', $quiz->id, $course->id, false, MUST_EXIST);
+
+        \quiz_livequizmonitor\local\manager\student_note_manager::save_note(
+            (int) $quiz->id,
+            (int) $student->id,
+            (int) $teacher->id,
+            'Has a note'
+        );
+
+        $this->setUser($teacher);
+        $result = get_monitor_state::execute($cm->id, 0);
+
+        $this->assertArrayHasKey('hasnote', $result['students'][0]);
+        $this->assertTrue($result['students'][0]['hasnote']);
+    }
+
+    /**
      * Student without report capability cannot call the external function.
      */
     public function test_execute_requires_capability(): void {

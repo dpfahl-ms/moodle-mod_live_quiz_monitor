@@ -112,6 +112,13 @@ class monitor_manager {
         }
 
         self::sort_student_rows($rows);
+
+        $userids = array_map(static fn(stdClass $row): int => (int) $row->userid, $rows);
+        $hasnotemap = student_note_manager::get_hasnote_map((int) $quiz->id, $userids);
+        foreach ($rows as $row) {
+            $row->hasnote = !empty($hasnotemap[$row->userid]);
+        }
+
         $summary = self::build_summary($rows, count($students));
 
         $canextend = extend_time_manager::user_can_extend($context);
@@ -337,6 +344,7 @@ class monitor_manager {
             'searchtext' => self::build_searchtext($user, $showemail),
             'attemptendat' => $attemptendat,
             'canextend' => $canextend,
+            'hasnote' => false,
         ];
     }
 

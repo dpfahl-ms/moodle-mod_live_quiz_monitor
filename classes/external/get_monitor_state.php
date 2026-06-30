@@ -123,6 +123,7 @@ class get_monitor_state extends external_api {
             'searchtext' => new external_value(PARAM_TEXT, 'Lowercase search haystack'),
             'attemptendat' => new external_value(PARAM_INT, 'Attempt deadline timestamp', VALUE_OPTIONAL),
             'canextend' => new external_value(PARAM_BOOL, 'Viewer may extend time'),
+            'hasnote' => new external_value(PARAM_BOOL, 'Student has a saved note'),
         ]);
 
         return new external_single_structure([
@@ -169,6 +170,7 @@ class get_monitor_state extends external_api {
                 'hastimer' => (bool) $row->hastimer,
                 'searchtext' => $row->searchtext,
                 'canextend' => (bool) $row->canextend,
+                'hasnote' => (bool) ($row->hasnote ?? false),
             ];
             if ($row->attemptid !== null) {
                 $entry['attemptid'] = $row->attemptid;

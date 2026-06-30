@@ -51,7 +51,11 @@ class monitor_renderer extends plugin_renderer_base {
         $students = [];
         foreach ($state->students as $row) {
             $student = (array) $row;
-            $student['extendactionenabled'] = $row->status === monitor_manager::STATUS_INPROGRESS;
+            $student['extendactionenabled'] = $canextend && $row->status === monitor_manager::STATUS_INPROGRESS;
+            $student['canextend'] = $canextend;
+            $student['notelabel'] = !empty($row->hasnote)
+                ? get_string('notes:editlabel', 'quiz_livequizmonitor')
+                : get_string('notes:addlabel', 'quiz_livequizmonitor');
             $students[] = $student;
         }
 
@@ -75,6 +79,8 @@ class monitor_renderer extends plugin_renderer_base {
             'bulkextenddisabled' => $inprogresscount === 0,
             'bulkextendlabel' => get_string('extend:bulklabel', 'quiz_livequizmonitor'),
             'extendrowlabel' => get_string('extend:rowaction', 'quiz_livequizmonitor'),
+            'notesaddlabel' => get_string('notes:addlabel', 'quiz_livequizmonitor'),
+            'noteseditlabel' => get_string('notes:editlabel', 'quiz_livequizmonitor'),
             'actionsmenulabel' => get_string('actions'),
             'tableheaders' => [
                 'status' => get_string('table:status', 'quiz_livequizmonitor'),
@@ -85,7 +91,7 @@ class monitor_renderer extends plugin_renderer_base {
                 'actions' => get_string('table:actions', 'quiz_livequizmonitor'),
             ],
             'showemailcolumn' => !empty($state->students) && !empty($state->students[0]->showemail),
-            'showactionscolumn' => $canextend,
+            'showactionscolumn' => (bool) $state->hasstudents,
             'filter' => $this->export_filter_context($state),
             'filterempty' => get_string('filter:empty', 'quiz_livequizmonitor'),
         ];

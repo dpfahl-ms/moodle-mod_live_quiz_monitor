@@ -96,5 +96,18 @@ function xmldb_quiz_livequizmonitor_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2025040103, 'quiz', 'livequizmonitor');
     }
 
+    if ($oldversion < 2025040105) {
+        $dbman = $DB->get_manager();
+        $table = new xmldb_table('quiz_livequizmonitor_notes');
+        if (!$dbman->table_exists($table)) {
+            $dbman->install_one_table_from_xmldb_file(
+                __DIR__ . '/install.xml',
+                'quiz_livequizmonitor_notes'
+            );
+        }
+
+        upgrade_plugin_savepoint(true, 2025040105, 'quiz', 'livequizmonitor');
+    }
+
     return true;
 }

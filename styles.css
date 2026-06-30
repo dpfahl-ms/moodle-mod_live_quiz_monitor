@@ -179,3 +179,12 @@
     pointer-events: none;
     opacity: 0.55;
 }
+
+.livequizmonitor-row-actions .dropdown-item .fa-book {
+    margin-right: 0.5rem;
+}
+
+.livequizmonitor-note-modal-body textarea {
+    min-height: 8rem;
+    resize: vertical;
+}

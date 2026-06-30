@@ -26,6 +26,7 @@ import {BaseComponent} from 'core/reactive';
 import {matchesFilters, countVisible} from 'quiz_livequizmonitor/filter_utils';
 import {createMonitorReactive, formatDuration} from 'quiz_livequizmonitor/reactive/monitor_state';
 import {showExtendModal} from 'quiz_livequizmonitor/extend_time_modal';
+import {showStudentNoteModal} from 'quiz_livequizmonitor/student_note_modal';
 
 /**
  * Reactive component that syncs monitor state to the page DOM.
@@ -64,7 +65,10 @@ class MonitorComponent extends BaseComponent {
         this.pollinterval = parseInt(descriptor.pollinterval ?? root.dataset.pollinterval ?? 5, 10);
         this.lastUpdatedPrefix = root.dataset.lastupdatedPrefix ?? '';
         this.extendRowLabel = root.dataset.extendRowLabel ?? 'Extend time';
+        this.noteAddLabel = root.dataset.notesAddLabel ?? 'Add note';
+        this.noteEditLabel = root.dataset.notesEditLabel ?? 'Edit note';
         this.actionsMenuLabel = root.dataset.actionsMenuLabel ?? 'Actions';
+        this.canextend = root.dataset.canextend === '1';
     }
 
     /**
@@ -99,6 +103,7 @@ class MonitorComponent extends BaseComponent {
             {watch: 'students.status:updated', handler: this.renderStudents},
             {watch: 'students.canextend:updated', handler: this.renderStudents},
             {watch: 'students.attemptendat:updated', handler: this.renderStudents},
+            {watch: 'students.hasnote:updated', handler: this.renderStudents},
             {watch: 'summary.notstarted:updated', handler: this.renderFilterToolbar},
             {watch: 'summary.inprogress:updated', handler: this.renderFilterToolbar},
             {watch: 'summary.inprogress:updated', handler: this.renderBulkExtendButton},
@@ -113,6 +118,7 @@ class MonitorComponent extends BaseComponent {
     stateReady() {
         this.bindFilterEvents();
         this.bindExtendEvents();
+        this.bindNoteEvents();
         this.startPolling();
         this.startTimerTick();
         this.renderFilterToolbar();
@@ -124,15 +130,29 @@ class MonitorComponent extends BaseComponent {
      * Bind bulk and individual extend controls.
      */
     bindExtendEvents() {
-        this.addEventListener(this.element, 'click', this.handleExtendClick);
+        this.addEventListener(this.element, 'click', this.handleActionMenuClick);
     }
 
     /**
-     * Delegate extend bulk and individual action menu clicks.
+     * Bind note menu clicks (same delegate as extend).
+     */
+    bindNoteEvents() {
+        // Handled by handleActionMenuClick.
+    }
+
+    /**
+     * Delegate row action menu clicks for extend and notes.
      *
      * @param {Event} event
      */
-    handleExtendClick(event) {
+    handleActionMenuClick(event) {
+        const noteLink = event.target.closest('[data-action="edit-note"]');
+        if (noteLink && this.element.contains(noteLink)) {
+            event.preventDefault();
+            this.openStudentNoteModal(noteLink);
+            return;
+        }
+
         const bulkBtn = event.target.closest(this.selectors.EXTENDBULK);
         if (bulkBtn && this.element.contains(bulkBtn)) {
             event.preventDefault();
@@ -152,6 +172,35 @@ class MonitorComponent extends BaseComponent {
             }
             this.openIndividualExtendModal(individualLink);
         }
+    }
+
+    /**
+     * Open student note modal and refresh row label on success.
+     *
+     * @param {HTMLElement} trigger Action menu link element
+     */
+    async openStudentNoteModal(trigger) {
+        const userid = parseInt(trigger.dataset.userid, 10);
+        const response = await showStudentNoteModal({
+            cmid: this.cmid,
+            groupid: this.groupid,
+            userid,
+            studentname: trigger.dataset.studentname ?? '',
+        });
+
+        if (!response) {
+            return;
+        }
+
+        const row = this.element.querySelector(`tr[data-userid="${userid}"]`);
+        if (row) {
+            const link = row.querySelector('[data-action="edit-note"]');
+            if (link) {
+                this.updateNoteActionLink(link, {hasnote: response.hasnote});
+            }
+        }
+
+        this.poll();
     }
 
     /**
@@ -526,9 +575,24 @@ class MonitorComponent extends BaseComponent {
         const fullname = this.escapeHtml(student.fullname ?? '');
         const extendlabel = this.escapeHtml(this.extendRowLabel);
         const actionslabel = this.escapeHtml(this.actionsMenuLabel);
-        const enabled = this.isExtendActionEnabled(student);
-        const disabledClass = enabled ? '' : ' disabled';
-        const disabledAttrs = enabled ? '' : ' aria-disabled="true" tabindex="-1"';
+        const notelabel = this.escapeHtml(student.hasnote ? this.noteEditLabel : this.noteAddLabel);
+        const hasnote = student.hasnote ? '1' : '0';
+        const showextend = !!(student.canextend ?? this.canextend);
+        const extendenabled = showextend && this.isExtendActionEnabled(student);
+        const extenddisabledClass = extendenabled ? '' : ' disabled';
+        const extenddisabledAttrs = extendenabled ? '' : ' aria-disabled="true" tabindex="-1"';
+
+        const extendItem = showextend ? `
+                    <a href="#"
+                       class="dropdown-item menu-action${extenddisabledClass}"
+                       role="menuitem"
+                       data-action="extend-individual"
+                       data-userid="${userid}"
+                       data-studentname="${fullname}"
+                       data-attemptendat="${attemptendat}"${extenddisabledAttrs}>
+                        <i class="fa-solid fa-clock" aria-hidden="true"></i>
+                        <span class="menu-action-text">${extendlabel}</span>
+                    </a>` : '';
 
         return `
             <div class="dropdown livequizmonitor-row-actions" data-region="row-actions">
@@ -543,18 +607,33 @@ class MonitorComponent extends BaseComponent {
                 </button>
                 <div class="dropdown-menu dropdown-menu-right">
                     <a href="#"
-                       class="dropdown-item menu-action${disabledClass}"
+                       class="dropdown-item menu-action"
                        role="menuitem"
-                       data-action="extend-individual"
+                       data-action="edit-note"
                        data-userid="${userid}"
                        data-studentname="${fullname}"
-                       data-attemptendat="${attemptendat}"${disabledAttrs}>
-                        <i class="fa-solid fa-clock" aria-hidden="true"></i>
-                        <span class="menu-action-text">${extendlabel}</span>
-                    </a>
+                       data-hasnote="${hasnote}">
+                        <i class="fa-solid fa-book" aria-hidden="true"></i>
+                        <span class="menu-action-text">${notelabel}</span>
+                    </a>${extendItem}
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Sync note menu label from hasnote state.
+     *
+     * @param {HTMLElement} link Note action menu item
+     * @param {object} student Student state row
+     */
+    updateNoteActionLink(link, student) {
+        const hasnote = !!student.hasnote;
+        link.dataset.hasnote = hasnote ? '1' : '0';
+        const labelEl = link.querySelector('.menu-action-text');
+        if (labelEl) {
+            labelEl.textContent = hasnote ? this.noteEditLabel : this.noteAddLabel;
+        }
     }
 
     /**
@@ -564,7 +643,7 @@ class MonitorComponent extends BaseComponent {
      * @param {object} student Student state row
      */
     updateExtendActionLink(link, student) {
-        const enabled = this.isExtendActionEnabled(student);
+        const enabled = (student.canextend ?? this.canextend) && this.isExtendActionEnabled(student);
         link.dataset.userid = String(student.userid ?? student.id);
         link.dataset.studentname = student.fullname ?? '';
         link.dataset.attemptendat = student.attemptendat ?? '';
@@ -599,6 +678,11 @@ class MonitorComponent extends BaseComponent {
         const link = menu.querySelector('[data-action="extend-individual"]');
         if (link) {
             this.updateExtendActionLink(link, student);
+        }
+
+        const notelink = menu.querySelector('[data-action="edit-note"]');
+        if (notelink) {
+            this.updateNoteActionLink(notelink, student);
         }
     }
 
