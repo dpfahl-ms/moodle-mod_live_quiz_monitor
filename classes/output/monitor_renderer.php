@@ -27,6 +27,7 @@ namespace quiz_livequizmonitor\output;
 defined('MOODLE_INTERNAL') || die();
 
 use plugin_renderer_base;
+use quiz_livequizmonitor\local\manager\monitor_manager;
 use stdClass;
 
 /**
@@ -44,6 +45,15 @@ class monitor_renderer extends plugin_renderer_base {
      */
     public function export_for_template(stdClass $state, int $pollinterval, int $groupid): array {
         $updated = userdate($state->updatedat, get_string('strftimetime', 'langconfig'));
+        $canextend = !empty($state->canextend);
+        $inprogresscount = (int) ($state->inprogresscount ?? $state->summary->inprogress->count);
+
+        $students = [];
+        foreach ($state->students as $row) {
+            $student = (array) $row;
+            $student['extendactionenabled'] = $row->status === monitor_manager::STATUS_INPROGRESS;
+            $students[] = $student;
+        }
 
         return [
             'cmid' => $state->cmid,
@@ -59,17 +69,67 @@ class monitor_renderer extends plugin_renderer_base {
             'pollinterval' => $pollinterval,
             'groupid' => $groupid,
             'summary' => (array) $state->summary,
-            'students' => array_map(static function(stdClass $row): array {
-                return (array) $row;
-            }, $state->students),
+            'students' => $students,
+            'canextend' => $canextend,
+            'inprogresscount' => $inprogresscount,
+            'bulkextenddisabled' => $inprogresscount === 0,
+            'bulkextendlabel' => get_string('extend:bulklabel', 'quiz_livequizmonitor'),
+            'extendrowlabel' => get_string('extend:rowaction', 'quiz_livequizmonitor'),
+            'actionsmenulabel' => get_string('actions'),
             'tableheaders' => [
                 'status' => get_string('table:status', 'quiz_livequizmonitor'),
                 'student' => get_string('table:student', 'quiz_livequizmonitor'),
                 'email' => get_string('table:email', 'quiz_livequizmonitor'),
                 'progress' => get_string('table:progress', 'quiz_livequizmonitor'),
                 'timeremaining' => get_string('table:timeremaining', 'quiz_livequizmonitor'),
+                'actions' => get_string('table:actions', 'quiz_livequizmonitor'),
             ],
             'showemailcolumn' => !empty($state->students) && !empty($state->students[0]->showemail),
+            'showactionscolumn' => $canextend,
+            'filter' => $this->export_filter_context($state),
+            'filterempty' => get_string('filter:empty', 'quiz_livequizmonitor'),
+        ];
+    }
+
+    /**
+     * Build filter toolbar template context.
+     *
+     * @param stdClass $state Monitor state from monitor_manager.
+     * @return array Template context for filter partial.
+     */
+    protected function export_filter_context(stdClass $state): array {
+        $summary = $state->summary;
+
+        return [
+            'searchplaceholder' => get_string('filter:searchplaceholder', 'quiz_livequizmonitor'),
+            'clearlabel' => get_string('filter:clear', 'quiz_livequizmonitor'),
+            'chipsgrouplabel' => get_string('filter:toolbarlabel', 'quiz_livequizmonitor'),
+            'chips' => [
+                [
+                    'status' => 'all',
+                    'label' => get_string('filter:all', 'quiz_livequizmonitor'),
+                    'count' => $state->totalstudents,
+                    'active' => true,
+                ],
+                [
+                    'status' => 'notstarted',
+                    'label' => get_string('status:notstarted', 'quiz_livequizmonitor'),
+                    'count' => $summary->notstarted->count,
+                    'active' => false,
+                ],
+                [
+                    'status' => 'inprogress',
+                    'label' => get_string('status:inprogress', 'quiz_livequizmonitor'),
+                    'count' => $summary->inprogress->count,
+                    'active' => false,
+                ],
+                [
+                    'status' => 'completed',
+                    'label' => get_string('status:completed', 'quiz_livequizmonitor'),
+                    'count' => $summary->completed->count,
+                    'active' => false,
+                ],
+            ],
         ];
     }
 }

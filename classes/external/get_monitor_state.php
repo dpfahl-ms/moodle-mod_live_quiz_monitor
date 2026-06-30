@@ -120,6 +120,9 @@ class get_monitor_state extends external_api {
             'timeremaining' => new external_value(PARAM_INT, 'Seconds remaining', VALUE_OPTIONAL),
             'timeremainingdisplay' => new external_value(PARAM_TEXT, 'Formatted time remaining'),
             'hastimer' => new external_value(PARAM_BOOL, 'Has countdown timer'),
+            'searchtext' => new external_value(PARAM_TEXT, 'Lowercase search haystack'),
+            'attemptendat' => new external_value(PARAM_INT, 'Attempt deadline timestamp', VALUE_OPTIONAL),
+            'canextend' => new external_value(PARAM_BOOL, 'Viewer may extend time'),
         ]);
 
         return new external_single_structure([
@@ -129,6 +132,8 @@ class get_monitor_state extends external_api {
             'updatedat' => new external_value(PARAM_INT, 'Updated timestamp'),
             'totalstudents' => new external_value(PARAM_INT, 'Total students'),
             'hasstudents' => new external_value(PARAM_BOOL, 'Has students'),
+            'canextend' => new external_value(PARAM_BOOL, 'Viewer may extend time'),
+            'inprogresscount' => new external_value(PARAM_INT, 'In-progress student count'),
             'summary' => new external_single_structure([
                 'notstarted' => $statuscount,
                 'inprogress' => $statuscount,
@@ -162,12 +167,17 @@ class get_monitor_state extends external_api {
                 'progressbarclass' => $row->progressbarclass,
                 'timeremainingdisplay' => $row->timeremainingdisplay,
                 'hastimer' => (bool) $row->hastimer,
+                'searchtext' => $row->searchtext,
+                'canextend' => (bool) $row->canextend,
             ];
             if ($row->attemptid !== null) {
                 $entry['attemptid'] = $row->attemptid;
             }
             if ($row->timeremaining !== null) {
                 $entry['timeremaining'] = (int) $row->timeremaining;
+            }
+            if ($row->attemptendat !== null) {
+                $entry['attemptendat'] = (int) $row->attemptendat;
             }
             $students[] = $entry;
         }
@@ -180,6 +190,8 @@ class get_monitor_state extends external_api {
             'updatedat' => $state->updatedat,
             'totalstudents' => $state->totalstudents,
             'hasstudents' => (bool) $state->hasstudents,
+            'canextend' => (bool) ($state->canextend ?? false),
+            'inprogresscount' => (int) ($state->inprogresscount ?? $summary->inprogress->count),
             'summary' => [
                 'notstarted' => (array) $summary->notstarted,
                 'inprogress' => (array) $summary->inprogress,

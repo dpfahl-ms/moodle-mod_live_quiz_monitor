@@ -1,0 +1,24 @@
+<div class="dropdown livequizmonitor-row-actions" data-region="row-actions">
+    <button type="button"
+            class="btn btn-icon dropdown-toggle no-caret d-flex align-items-center justify-content-center"
+            data-toggle="dropdown"
+            aria-haspopup="true"
+            aria-expanded="false"
+            title="{{actionsmenulabel}}">
+        <i class="icon fa fa-ellipsis-vertical fa-fw" aria-hidden="true"></i>
+        <span class="sr-only">{{actionsmenulabel}}</span>
+    </button>
+    <div class="dropdown-menu dropdown-menu-right">
+        <a href="#"
+           class="dropdown-item menu-action{{^extendactionenabled}} disabled{{/extendactionenabled}}"
+           role="menuitem"
+           data-action="extend-individual"
+           data-userid="{{userid}}"
+           data-studentname="{{fullname}}"
+           data-attemptendat="{{attemptendat}}"
+           {{^extendactionenabled}}aria-disabled="true" tabindex="-1"{{/extendactionenabled}}>
+            <i class="fa-solid fa-clock" aria-hidden="true"></i>
+            <span class="menu-action-text">{{extendrowlabel}}</span>
+        </a>
+    </div>
+</div>

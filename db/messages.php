@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version information for the live quiz monitor report.
+ * Message providers for live quiz monitor.
  *
  * @package   quiz_livequizmonitor
  * @copyright 2026 SSYSTEMS
@@ -24,8 +24,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2025040104;
-$plugin->requires  = 2024100700;
-$plugin->component = 'quiz_livequizmonitor';
-$plugin->maturity  = MATURITY_ALPHA;
-$plugin->release   = 'v0.1.2';
+$messageproviders = [
+    'timeextended' => [
+        'capability' => 'mod/quiz:attempt',
+    ],
+];

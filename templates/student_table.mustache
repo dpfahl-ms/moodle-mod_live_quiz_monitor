@@ -1,3 +1,6 @@
+<div class="alert alert-secondary d-none mb-3" data-region="filter-empty" role="status">
+    {{filterempty}}
+</div>
 <div class="table-responsive" data-region="student-table">
     <table class="table table-striped generaltable livequizmonitor-table">
         <thead>
@@ -9,6 +12,9 @@
                 {{/showemailcolumn}}
                 <th>{{tableheaders.progress}}</th>
                 <th>{{tableheaders.timeremaining}}</th>
+                {{#showactionscolumn}}
+                <th>{{tableheaders.actions}}</th>
+                {{/showactionscolumn}}
             </tr>
         </thead>
         <tbody>
@@ -41,6 +47,11 @@
                     <span class="livequizmonitor-timer" data-field="timer">—</span>
                     {{/hastimer}}
                 </td>
+                {{#showactionscolumn}}
+                <td class="livequizmonitor-actions" data-field="actions">
+                    {{> quiz_livequizmonitor/row_action_menu }}
+                </td>
+                {{/showactionscolumn}}
             </tr>
             {{/students}}
         </tbody>

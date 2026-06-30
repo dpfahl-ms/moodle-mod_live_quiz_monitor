@@ -60,3 +60,122 @@
 .livequizmonitor-table .badge {
     min-width: 6rem;
 }
+
+.livequizmonitor-filter-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.livequizmonitor-search-card {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 12rem;
+    max-width: 20rem;
+    padding: 0.375rem 0.75rem;
+    background: var(--bs-body-bg, #fff);
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: var(--bs-border-radius, 0.375rem);
+}
+
+.livequizmonitor-search-icon {
+    display: flex;
+    align-items: center;
+    color: var(--bs-secondary-color, #6c757d);
+    flex-shrink: 0;
+}
+
+.livequizmonitor-search-icon img {
+    width: 1rem;
+    height: 1rem;
+}
+
+.livequizmonitor-search-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.875rem;
+    width: 100%;
+    color: var(--bs-body-color, #212529);
+}
+
+.livequizmonitor-search-input::placeholder {
+    color: var(--bs-secondary-color, #6c757d);
+}
+
+.livequizmonitor-filter-badge {
+    border: none;
+    cursor: pointer;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    padding: 0.45em 0.65em;
+    line-height: 1.2;
+}
+
+.livequizmonitor-filter-badge:focus-visible {
+    outline: 2px solid var(--bs-primary, #0d6efd);
+    outline-offset: 2px;
+}
+
+.livequizmonitor-filter-badge-active {
+    box-shadow: 0 0 0 2px var(--bs-body-bg, #fff), 0 0 0 4px currentColor;
+}
+
+.livequizmonitor-summary-tile {
+    cursor: pointer;
+    transition: box-shadow 0.15s ease-in-out;
+}
+
+.livequizmonitor-summary-tile:focus-visible {
+    outline: 2px solid var(--bs-primary, #0d6efd);
+    outline-offset: 2px;
+}
+
+.livequizmonitor-tile-active {
+    box-shadow: 0 0 0 2px var(--bs-primary, #0d6efd);
+}
+
+.livequizmonitor-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.livequizmonitor-extend-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.livequizmonitor-extend-preset.active {
+    color: var(--bs-primary, #0d6efd);
+    border-color: var(--bs-primary, #0d6efd);
+    background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.08);
+}
+
+.livequizmonitor-actions .action-menu {
+    margin: 0;
+}
+
+.livequizmonitor-row-actions {
+    margin: 0;
+}
+
+.livequizmonitor-row-actions .dropdown-toggle::after {
+    display: none;
+}
+
+.livequizmonitor-row-actions .dropdown-item .fa-clock {
+    margin-right: 0.5rem;
+}
+
+.livequizmonitor-row-actions .menu-action-text {
+    vertical-align: middle;
+}
+
+.livequizmonitor-row-actions .dropdown-item.disabled {
+    pointer-events: none;
+    opacity: 0.55;
+}

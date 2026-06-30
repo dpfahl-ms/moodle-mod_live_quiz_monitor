@@ -32,6 +32,7 @@ use required_capability_exception;
  * Tests for the get_monitor_state external function.
  *
  * @covers \quiz_livequizmonitor\external\get_monitor_state
+ * @runTestsInSeparateProcesses
  */
 final class get_monitor_state_test extends advanced_testcase {
 
@@ -50,7 +51,7 @@ final class get_monitor_state_test extends advanced_testcase {
 
         $quizgenerator = $generator->get_plugin_generator('mod_quiz');
         $questiongenerator = $generator->get_plugin_generator('core_question');
-        $quiz = $quizgenerator->create_instance(['course' => $course->id, 'grade' => 100, 'sumgrades' => 1]);
+        $quiz = $quizgenerator->create_instance(['course' => $course->id, 'grade' => 100, 'sumgrades' => 1, 'timelimit' => 600]);
         $cm = get_coursemodule_from_instance('quiz', $quiz->id, $course->id, false, MUST_EXIST);
         $cat = $questiongenerator->create_question_category(['contextid' => \context_module::instance($cm->id)->id]);
         $question = $questiongenerator->create_question('shortanswer', null, ['category' => $cat->id]);
@@ -72,6 +73,14 @@ final class get_monitor_state_test extends advanced_testcase {
         $this->assertSame('badge-warning', $result['students'][0]['statusclass']);
         $this->assertSame('bg-warning', $result['students'][0]['progressbarclass']);
         $this->assertArrayHasKey('progresspercent', $result['students'][0]);
+        $this->assertArrayHasKey('searchtext', $result['students'][0]);
+        $this->assertNotSame('', $result['students'][0]['searchtext']);
+        $this->assertArrayHasKey('canextend', $result['students'][0]);
+        $this->assertTrue($result['students'][0]['canextend']);
+        $this->assertArrayHasKey('attemptendat', $result['students'][0]);
+        $this->assertGreaterThan(0, $result['students'][0]['attemptendat']);
+        $this->assertTrue($result['canextend']);
+        $this->assertSame(1, $result['inprogresscount']);
         $this->assertSame('border-warning', $result['summary']['inprogress']['statusclass']);
     }
 

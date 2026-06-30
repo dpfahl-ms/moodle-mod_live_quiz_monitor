@@ -23,7 +23,9 @@
 
 import Ajax from 'core/ajax';
 import {BaseComponent} from 'core/reactive';
+import {matchesFilters, countVisible} from 'quiz_livequizmonitor/filter_utils';
 import {createMonitorReactive, formatDuration} from 'quiz_livequizmonitor/reactive/monitor_state';
+import {showExtendModal} from 'quiz_livequizmonitor/extend_time_modal';
 
 /**
  * Reactive component that syncs monitor state to the page DOM.
@@ -45,6 +47,13 @@ class MonitorComponent extends BaseComponent {
             PROGRESSCONTAINER: '[data-field="progress"] .progress[role="progressbar"]',
             PROGRESSLABEL: '[data-field="progress"] .livequizmonitor-progress-label',
             TIMER: '[data-field="timer"]',
+            SEARCHINPUT: '[data-action="search"]',
+            FILTERCHIP: '[data-action="filter-status"]',
+            CLEARFILTERS: '[data-action="clear-filters"]',
+            FILTEREMPTY: '[data-region="filter-empty"]',
+            STUDENTTABLE: '[data-region="student-table"]',
+            SUMMARYTILE: '.livequizmonitor-summary-tile',
+            EXTENDBULK: '[data-action="extend-bulk"]',
         };
         this.pollTimer = null;
         this.tickTimer = null;
@@ -54,6 +63,8 @@ class MonitorComponent extends BaseComponent {
         this.groupid = parseInt(descriptor.groupid ?? root.dataset.groupid ?? 0, 10);
         this.pollinterval = parseInt(descriptor.pollinterval ?? root.dataset.pollinterval ?? 5, 10);
         this.lastUpdatedPrefix = root.dataset.lastupdatedPrefix ?? '';
+        this.extendRowLabel = root.dataset.extendRowLabel ?? 'Extend time';
+        this.actionsMenuLabel = root.dataset.actionsMenuLabel ?? 'Actions';
     }
 
     /**
@@ -85,6 +96,14 @@ class MonitorComponent extends BaseComponent {
             {watch: 'students.progressbarclass:updated', handler: this.renderStudents},
             {watch: 'students.statuslabel:updated', handler: this.renderStudents},
             {watch: 'students.statusclass:updated', handler: this.renderStudents},
+            {watch: 'students.status:updated', handler: this.renderStudents},
+            {watch: 'students.canextend:updated', handler: this.renderStudents},
+            {watch: 'students.attemptendat:updated', handler: this.renderStudents},
+            {watch: 'summary.notstarted:updated', handler: this.renderFilterToolbar},
+            {watch: 'summary.inprogress:updated', handler: this.renderFilterToolbar},
+            {watch: 'summary.inprogress:updated', handler: this.renderBulkExtendButton},
+            {watch: 'summary.completed:updated', handler: this.renderFilterToolbar},
+            {watch: 'meta.totalstudents:updated', handler: this.renderFilterToolbar},
         ];
     }
 
@@ -92,8 +111,188 @@ class MonitorComponent extends BaseComponent {
      * Start polling once state is ready.
      */
     stateReady() {
+        this.bindFilterEvents();
+        this.bindExtendEvents();
         this.startPolling();
         this.startTimerTick();
+        this.renderFilterToolbar();
+        this.renderBulkExtendButton();
+        this.applyRowVisibility();
+    }
+
+    /**
+     * Bind bulk and individual extend controls.
+     */
+    bindExtendEvents() {
+        this.addEventListener(this.element, 'click', this.handleExtendClick);
+    }
+
+    /**
+     * Delegate extend bulk and individual action menu clicks.
+     *
+     * @param {Event} event
+     */
+    handleExtendClick(event) {
+        const bulkBtn = event.target.closest(this.selectors.EXTENDBULK);
+        if (bulkBtn && this.element.contains(bulkBtn)) {
+            event.preventDefault();
+            if (bulkBtn.disabled) {
+                return;
+            }
+            this.openBulkExtendModal();
+            return;
+        }
+
+        const individualLink = event.target.closest('[data-action="extend-individual"]');
+        if (individualLink && this.element.contains(individualLink)) {
+            event.preventDefault();
+            if (individualLink.classList.contains('disabled')
+                || individualLink.getAttribute('aria-disabled') === 'true') {
+                return;
+            }
+            this.openIndividualExtendModal(individualLink);
+        }
+    }
+
+    /**
+     * Open bulk extend modal and refresh on success.
+     */
+    async openBulkExtendModal() {
+        const state = this.getState();
+        const inprogresscount = state?.summary?.inprogress?.count ?? state?.meta?.inprogresscount ?? 0;
+        const response = await showExtendModal({
+            mode: 'bulk',
+            cmid: this.cmid,
+            groupid: this.groupid,
+            inprogresscount,
+        });
+        if (response) {
+            this.poll();
+        }
+    }
+
+    /**
+     * Open individual extend modal for one student.
+     *
+     * @param {HTMLElement} trigger Action menu link element
+     */
+    async openIndividualExtendModal(trigger) {
+        const response = await showExtendModal({
+            mode: 'individual',
+            cmid: this.cmid,
+            groupid: this.groupid,
+            userid: parseInt(trigger.dataset.userid, 10),
+            studentname: trigger.dataset.studentname ?? '',
+            attemptendat: parseInt(trigger.dataset.attemptendat, 10) || null,
+        });
+        if (response) {
+            this.poll();
+        }
+    }
+
+    /**
+     * Enable or disable bulk extend button from reactive in-progress count.
+     */
+    renderBulkExtendButton() {
+        const button = this.getElement(this.selectors.EXTENDBULK);
+        if (!button) {
+            return;
+        }
+        const count = this.getState()?.summary?.inprogress?.count ?? 0;
+        button.disabled = count === 0;
+    }
+
+    /**
+     * Bind search, status filter, and clear control events.
+     */
+    bindFilterEvents() {
+        const searchInput = this.getElement(this.selectors.SEARCHINPUT);
+        if (searchInput) {
+            this.addEventListener(searchInput, 'input', this.handleSearchInput);
+        }
+
+        this.addEventListener(this.element, 'click', this.handleFilterClick);
+
+        const clearBtn = this.getElement(this.selectors.CLEARFILTERS);
+        if (clearBtn) {
+            this.addEventListener(clearBtn, 'click', this.handleClearFilters);
+        }
+
+        this.addEventListener(this.element, 'keydown', this.handleFilterKeydown);
+    }
+
+    /**
+     * Handle search input changes.
+     *
+     * @param {Event} event
+     */
+    handleSearchInput(event) {
+        this.reactive.dispatch('setSearch', event.target.value);
+        this.afterFilterChange();
+    }
+
+    /**
+     * Delegate clicks on status chips and summary tiles.
+     *
+     * @param {Event} event
+     */
+    handleFilterClick(event) {
+        const trigger = event.target.closest(this.selectors.FILTERCHIP);
+        if (!trigger || !this.element.contains(trigger)) {
+            return;
+        }
+        const status = trigger.dataset.status;
+        if (!status) {
+            return;
+        }
+        event.preventDefault();
+        this.reactive.dispatch('setStatusFilter', status);
+        this.afterFilterChange();
+    }
+
+    /**
+     * Support keyboard activation on summary tiles.
+     *
+     * @param {KeyboardEvent} event
+     */
+    handleFilterKeydown(event) {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+            return;
+        }
+        const tile = event.target.closest(this.selectors.SUMMARYTILE);
+        if (!tile || !this.element.contains(tile)) {
+            return;
+        }
+        event.preventDefault();
+        const status = tile.dataset.status;
+        if (status) {
+            this.reactive.dispatch('setStatusFilter', status);
+            this.afterFilterChange();
+        }
+    }
+
+    /**
+     * Reset all filters and restore the full student list.
+     *
+     * @param {Event} event
+     */
+    handleClearFilters(event) {
+        event.preventDefault();
+        this.reactive.dispatch('clearFilters');
+        const searchInput = this.getElement(this.selectors.SEARCHINPUT);
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        this.afterFilterChange();
+    }
+
+    /**
+     * Re-apply all filter-driven DOM updates.
+     */
+    afterFilterChange() {
+        this.renderFilterToolbar();
+        this.applyRowVisibility();
+        this.renderFilterEmpty();
     }
 
     /**
@@ -220,6 +419,190 @@ class MonitorComponent extends BaseComponent {
     }
 
     /**
+     * Toggle row visibility based on active filters.
+     */
+    applyRowVisibility() {
+        const filters = this.getState()?.meta?.filters ?? {search: '', status: 'all'};
+        this.getStudentRows().forEach((student) => {
+            const userid = student.userid ?? student.id;
+            const row = this.element.querySelector(`tr[data-userid="${userid}"]`);
+            if (!row) {
+                return;
+            }
+            row.classList.toggle('d-none', !matchesFilters(student, filters));
+        });
+        this.renderFilterEmpty();
+    }
+
+    /**
+     * Sync chip/tile active state and chip count labels.
+     */
+    renderFilterToolbar() {
+        const state = this.getState();
+        if (!state) {
+            return;
+        }
+        const activeStatus = state.meta?.filters?.status ?? 'all';
+        const summary = state.summary ?? {};
+        const counts = {
+            all: state.meta?.totalstudents ?? 0,
+            notstarted: summary.notstarted?.count ?? 0,
+            inprogress: summary.inprogress?.count ?? 0,
+            completed: summary.completed?.count ?? 0,
+        };
+
+        this.element.querySelectorAll(this.selectors.FILTERCHIP).forEach((chip) => {
+            const status = chip.dataset.status;
+            const isActive = status === activeStatus;
+            chip.classList.toggle('active', isActive);
+            chip.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            const countEl = chip.querySelector(`[data-filter-count="${status}"]`);
+            if (countEl && status in counts) {
+                countEl.textContent = counts[status];
+            }
+        });
+
+        this.element.querySelectorAll(this.selectors.SUMMARYTILE).forEach((tile) => {
+            const status = tile.dataset.status;
+            const isActive = status === activeStatus;
+            tile.classList.toggle('livequizmonitor-tile-active', isActive);
+            tile.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+    }
+
+    /**
+     * Show or hide the filtered-empty message vs the student table.
+     */
+    renderFilterEmpty() {
+        const emptyEl = this.getElement(this.selectors.FILTEREMPTY);
+        const tableEl = this.getElement(this.selectors.STUDENTTABLE);
+        if (!emptyEl) {
+            return;
+        }
+        const state = this.getState();
+        const hasCohort = state?.meta?.hasstudents;
+        const filters = state?.meta?.filters ?? {search: '', status: 'all'};
+        const hasActiveFilter = filters.search !== '' || filters.status !== 'all';
+        const visible = countVisible(state?.students ?? [], filters);
+        const showEmpty = hasCohort && hasActiveFilter && visible === 0;
+
+        emptyEl.classList.toggle('d-none', !showEmpty);
+        if (tableEl) {
+            tableEl.classList.toggle('d-none', showEmpty);
+        }
+    }
+
+    /**
+     * Whether extend time is available for a student row.
+     *
+     * @param {object} student Student state row
+     * @returns {boolean}
+     */
+    isExtendActionEnabled(student) {
+        return student?.status === 'inprogress';
+    }
+
+    /**
+     * Escape text for safe HTML attribute or content insertion.
+     *
+     * @param {string} text Raw text
+     * @returns {string}
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text ?? '';
+        return div.innerHTML;
+    }
+
+    /**
+     * Build row action menu markup matching row_action_menu.mustache.
+     *
+     * @param {object} student Student state row
+     * @returns {string}
+     */
+    buildRowActionMenuHtml(student) {
+        const userid = student.userid ?? student.id;
+        const attemptendat = student.attemptendat ?? '';
+        const fullname = this.escapeHtml(student.fullname ?? '');
+        const extendlabel = this.escapeHtml(this.extendRowLabel);
+        const actionslabel = this.escapeHtml(this.actionsMenuLabel);
+        const enabled = this.isExtendActionEnabled(student);
+        const disabledClass = enabled ? '' : ' disabled';
+        const disabledAttrs = enabled ? '' : ' aria-disabled="true" tabindex="-1"';
+
+        return `
+            <div class="dropdown livequizmonitor-row-actions" data-region="row-actions">
+                <button type="button"
+                        class="btn btn-icon dropdown-toggle no-caret d-flex align-items-center justify-content-center"
+                        data-toggle="dropdown"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        title="${actionslabel}">
+                    <i class="icon fa fa-ellipsis-vertical fa-fw" aria-hidden="true"></i>
+                    <span class="sr-only">${actionslabel}</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right">
+                    <a href="#"
+                       class="dropdown-item menu-action${disabledClass}"
+                       role="menuitem"
+                       data-action="extend-individual"
+                       data-userid="${userid}"
+                       data-studentname="${fullname}"
+                       data-attemptendat="${attemptendat}"${disabledAttrs}>
+                        <i class="fa-solid fa-clock" aria-hidden="true"></i>
+                        <span class="menu-action-text">${extendlabel}</span>
+                    </a>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Sync disabled state and data attributes on the extend menu item.
+     *
+     * @param {HTMLElement} link Extend action menu item
+     * @param {object} student Student state row
+     */
+    updateExtendActionLink(link, student) {
+        const enabled = this.isExtendActionEnabled(student);
+        link.dataset.userid = String(student.userid ?? student.id);
+        link.dataset.studentname = student.fullname ?? '';
+        link.dataset.attemptendat = student.attemptendat ?? '';
+        link.classList.toggle('disabled', !enabled);
+        if (enabled) {
+            link.removeAttribute('aria-disabled');
+            link.removeAttribute('tabindex');
+        } else {
+            link.setAttribute('aria-disabled', 'true');
+            link.setAttribute('tabindex', '-1');
+        }
+    }
+
+    /**
+     * Keep the row action menu visible and refresh extend item state.
+     *
+     * @param {object} student Student state row
+     * @param {HTMLElement} row Table row element
+     */
+    renderRowActions(student, row) {
+        const cell = row.querySelector('[data-field="actions"]');
+        if (!cell) {
+            return;
+        }
+
+        let menu = cell.querySelector('[data-region="row-actions"]');
+        if (!menu) {
+            cell.insertAdjacentHTML('beforeend', this.buildRowActionMenuHtml(student));
+            return;
+        }
+
+        const link = menu.querySelector('[data-action="extend-individual"]');
+        if (link) {
+            this.updateExtendActionLink(link, student);
+        }
+    }
+
+    /**
      * Update student table rows from state.
      */
     renderStudents() {
@@ -266,7 +649,9 @@ class MonitorComponent extends BaseComponent {
                     timer.textContent = '—';
                 }
             }
+            this.renderRowActions(student, row);
         });
+        this.applyRowVisibility();
     }
 }
 

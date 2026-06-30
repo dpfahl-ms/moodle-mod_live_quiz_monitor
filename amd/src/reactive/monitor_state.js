@@ -67,6 +67,12 @@ export const createInitialState = () => ({
         stale: false,
         pollinterval: 5,
         groupid: 0,
+        filters: {
+            search: '',
+            status: 'all',
+        },
+        canextend: false,
+        inprogresscount: 0,
     },
     summary: emptySummary(),
     students: [],
@@ -102,6 +108,12 @@ class MonitorMutations {
         stateManager.state.meta.totalstudents = payload.totalstudents;
         stateManager.state.meta.hasstudents = payload.hasstudents;
         stateManager.state.meta.stale = false;
+        if (payload.canextend !== undefined) {
+            stateManager.state.meta.canextend = payload.canextend;
+        }
+        if (payload.inprogresscount !== undefined) {
+            stateManager.state.meta.inprogresscount = payload.inprogresscount;
+        }
 
         // Update summary buckets in place so watchers receive summary.<bucket>:updated events.
         ['notstarted', 'inprogress', 'completed'].forEach((key) => {
@@ -125,6 +137,48 @@ class MonitorMutations {
             students.set(student.id, student);
         });
 
+        stateManager.setReadOnly(true);
+    }
+
+    /**
+     * Update the search filter term.
+     *
+     * @param {StateManager} stateManager
+     * @param {string} value Search input value
+     */
+    setSearch(stateManager, value) {
+        stateManager.setReadOnly(false);
+        const trimmed = (value ?? '').trim();
+        stateManager.state.meta.filters.search = trimmed;
+        stateManager.setReadOnly(true);
+    }
+
+    /**
+     * Update the status filter (single-select with toggle-off).
+     *
+     * @param {StateManager} stateManager
+     * @param {string} status Status key or all
+     */
+    setStatusFilter(stateManager, status) {
+        stateManager.setReadOnly(false);
+        if (status === 'all') {
+            stateManager.state.meta.filters.status = 'all';
+        } else {
+            const current = stateManager.state.meta.filters.status;
+            stateManager.state.meta.filters.status = current === status ? 'all' : status;
+        }
+        stateManager.setReadOnly(true);
+    }
+
+    /**
+     * Reset search and status filters to defaults.
+     *
+     * @param {StateManager} stateManager
+     */
+    clearFilters(stateManager) {
+        stateManager.setReadOnly(false);
+        stateManager.state.meta.filters.search = '';
+        stateManager.state.meta.filters.status = 'all';
         stateManager.setReadOnly(true);
     }
 

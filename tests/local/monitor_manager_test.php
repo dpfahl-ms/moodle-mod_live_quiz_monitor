@@ -75,7 +75,7 @@ final class monitor_manager_test extends advanced_testcase {
         $attempt = $quizgenerator->create_attempt($quizid, $userid);
         if ($state !== null && $attempt->state !== $state) {
             $attempt->state = $state;
-            if ($state === quiz_attempt::FINISHED) {
+            if (in_array($state, monitor_manager::completed_attempt_states(), true)) {
                 $attempt->timefinish = time();
             }
             $DB->update_record('quiz_attempts', $attempt);
@@ -126,6 +126,26 @@ final class monitor_manager_test extends advanced_testcase {
             );
             $this->assertSame($expectedpercent, $row->progresspercent);
         }
+    }
+
+    /**
+     * Submitted attempt state (modified Moodle 4.5) maps to completed.
+     */
+    public function test_submitted_attempt_maps_to_completed(): void {
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        [$quiz, $cm, $quizgenerator] = $this->create_quiz_with_question($course);
+
+        $user = $generator->create_user(['firstname' => 'Sam', 'lastname' => 'Submitted']);
+        $generator->enrol_user($user->id, $course->id, 'student');
+
+        $this->create_quiz_attempt($quizgenerator, $quiz->id, $user->id, monitor_manager::QUIZ_ATTEMPT_SUBMITTED);
+
+        $state = monitor_manager::get_state($course, $cm, $quiz, 0);
+        $this->assertCount(1, $state->students);
+        $this->assertSame(monitor_manager::STATUS_COMPLETED, $state->students[0]->status);
     }
 
     /**
@@ -239,5 +259,70 @@ final class monitor_manager_test extends advanced_testcase {
             monitor_manager::STATUS_NOTSTARTED,
             monitor_manager::STATUS_COMPLETED,
         ], $statuses);
+    }
+
+    /**
+     * Search haystack includes only fullname when hidden fields are not permitted.
+     */
+    public function test_build_searchtext_without_hidden_fields(): void {
+        $this->resetAfterTest();
+        $user = $this->getDataGenerator()->create_user([
+            'firstname' => 'Jane',
+            'lastname' => 'Doe',
+            'email' => 'jane@example.com',
+            'username' => 'jdoe',
+            'idnumber' => 'S123',
+        ]);
+
+        $haystack = monitor_manager::build_searchtext($user, false);
+
+        $this->assertStringContainsString('jane doe', $haystack);
+        $this->assertStringNotContainsString('jane@example.com', $haystack);
+        $this->assertStringNotContainsString('jdoe', $haystack);
+        $this->assertStringNotContainsString('s123', $haystack);
+    }
+
+    /**
+     * Search haystack includes permitted identity fields when hidden fields are visible.
+     */
+    public function test_build_searchtext_with_hidden_fields(): void {
+        $this->resetAfterTest();
+        $user = $this->getDataGenerator()->create_user([
+            'firstname' => 'Jane',
+            'lastname' => 'Doe',
+            'email' => 'Jane@Example.com',
+            'username' => 'jdoe',
+            'idnumber' => 'S123',
+        ]);
+
+        $haystack = monitor_manager::build_searchtext($user, true);
+
+        $this->assertStringContainsString('jane doe', $haystack);
+        $this->assertStringContainsString('jane@example.com', $haystack);
+        $this->assertStringContainsString('jdoe', $haystack);
+        $this->assertStringContainsString('s123', $haystack);
+    }
+
+    /**
+     * Student rows include searchtext in monitor state.
+     */
+    public function test_student_rows_include_searchtext(): void {
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        [$quiz, $cm] = $this->create_quiz_with_question($course);
+
+        $teacher = $generator->create_user();
+        $student = $generator->create_user(['firstname' => 'Search', 'lastname' => 'Target']);
+        $generator->enrol_user($teacher->id, $course->id, 'editingteacher');
+        $generator->enrol_user($student->id, $course->id, 'student');
+
+        $this->setUser($teacher);
+        $state = monitor_manager::get_state($course, $cm, $quiz, 0);
+
+        $this->assertCount(1, $state->students);
+        $this->assertObjectHasProperty('searchtext', $state->students[0]);
+        $this->assertStringContainsString('search target', $state->students[0]->searchtext);
     }
 }

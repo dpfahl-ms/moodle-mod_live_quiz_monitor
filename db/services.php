@@ -35,4 +35,14 @@ $functions = [
         'loginrequired' => true,
         'capabilities' => 'quiz/livequizmonitor:view',
     ],
+    'quiz_livequizmonitor_extend_quiz_time' => [
+        'classname' => 'quiz_livequizmonitor\\external\\extend_quiz_time',
+        'methodname' => 'execute',
+        'classpath' => '',
+        'description' => 'Extends quiz time for in-progress students.',
+        'type' => 'write',
+        'ajax' => true,
+        'loginrequired' => true,
+        'capabilities' => 'quiz/livequizmonitor:view',
+    ],
 ];

@@ -2,7 +2,9 @@
      data-cmid="{{cmid}}"
      data-groupid="{{groupid}}"
      data-pollinterval="{{pollinterval}}"
-     data-lastupdated-prefix="{{lastupdatedprefix}}">
+     data-lastupdated-prefix="{{lastupdatedprefix}}"
+     data-extend-row-label="{{extendrowlabel}}"
+     data-actions-menu-label="{{actionsmenulabel}}">
 
     <div class="livequizmonitor-header d-flex flex-wrap align-items-center justify-content-between mb-3">
         <div>
@@ -12,13 +14,24 @@
                 <span data-region="last-updated">{{updatedattext}}</span>
             </div>
         </div>
-        <div class="livequizmonitor-stale alert alert-warning py-1 px-2 mb-0 d-none" data-region="stale-indicator" role="status">
-            {{staleindicator}}
+        <div class="livequizmonitor-header-actions d-flex align-items-center gap-2">
+            {{#canextend}}
+            <button type="button"
+                    class="btn btn-primary"
+                    data-action="extend-bulk"
+                    {{#bulkextenddisabled}}disabled{{/bulkextenddisabled}}>
+                {{bulkextendlabel}}
+            </button>
+            {{/canextend}}
+            <div class="livequizmonitor-stale alert alert-warning py-1 px-2 mb-0 d-none" data-region="stale-indicator" role="status">
+                {{staleindicator}}
+            </div>
         </div>
     </div>
 
     {{#hasstudents}}
         {{> quiz_livequizmonitor/summary_tiles }}
+        {{> quiz_livequizmonitor/filter_toolbar }}
         {{> quiz_livequizmonitor/student_table }}
     {{/hasstudents}}
 

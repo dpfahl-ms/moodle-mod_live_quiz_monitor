@@ -48,6 +48,26 @@ class monitor_manager {
     public const STATUS_COMPLETED = 'completed';
 
     /**
+     * Quiz attempt state used on modified Moodle 4.5 and Moodle 5+.
+     *
+     * Stock Moodle 4.5 does not define {@see quiz_attempt::SUBMITTED}; use this
+     * literal so we can match DB rows without referencing a missing constant.
+     */
+    public const QUIZ_ATTEMPT_SUBMITTED = 'submitted';
+
+    /**
+     * Moodle attempt states that map to monitor "completed".
+     *
+     * @return string[]
+     */
+    public static function completed_attempt_states(): array {
+        return [
+            quiz_attempt::FINISHED,
+            self::QUIZ_ATTEMPT_SUBMITTED,
+        ];
+    }
+
+    /**
      * Build the full monitor state for a quiz module.
      *
      * @param stdClass $course Course record.
@@ -94,6 +114,9 @@ class monitor_manager {
         self::sort_student_rows($rows);
         $summary = self::build_summary($rows, count($students));
 
+        $canextend = extend_time_manager::user_can_extend($context);
+        $inprogresscount = $summary->inprogress->count;
+
         $state = (object) [
             'quizid' => (int) $quiz->id,
             'cmid' => (int) $cm->id,
@@ -103,6 +126,8 @@ class monitor_manager {
             'summary' => $summary,
             'students' => $rows,
             'hasstudents' => count($students) > 0,
+            'canextend' => $canextend,
+            'inprogresscount' => $inprogresscount,
         ];
 
         return $state;
@@ -125,14 +150,14 @@ class monitor_manager {
      * @param array $attempts Attempt records ordered newest first.
      * @return stdClass|null
      */
-    protected static function pick_relevant_attempt(array $attempts): ?stdClass {
+    public static function pick_relevant_attempt(array $attempts): ?stdClass {
         $latestfinished = null;
 
         foreach ($attempts as $attempt) {
             if (in_array($attempt->state, [quiz_attempt::IN_PROGRESS, quiz_attempt::OVERDUE], true)) {
                 return $attempt;
             }
-            if (in_array($attempt->state, [quiz_attempt::FINISHED, quiz_attempt::SUBMITTED], true) && $latestfinished === null) {
+            if (in_array($attempt->state, self::completed_attempt_states(), true) && $latestfinished === null) {
                 $latestfinished = $attempt;
             }
         }
@@ -170,6 +195,27 @@ class monitor_manager {
     }
 
     /**
+     * Build lowercase search haystack from fields the viewer may search.
+     *
+     * @param stdClass $user User record.
+     * @param bool $showhidden Whether hidden identity fields may be included.
+     * @return string
+     */
+    public static function build_searchtext(stdClass $user, bool $showhidden): string {
+        $parts = [\core_text::strtolower(fullname($user))];
+
+        if ($showhidden) {
+            foreach (['email', 'username', 'idnumber'] as $field) {
+                if (!empty($user->{$field})) {
+                    $parts[] = \core_text::strtolower($user->{$field});
+                }
+            }
+        }
+
+        return trim(implode(' ', $parts));
+    }
+
+    /**
      * Compute progress bar fill percentage for a student row.
      *
      * @param string $status Monitor status.
@@ -200,7 +246,7 @@ class monitor_manager {
         if (in_array($attempt->state, [quiz_attempt::IN_PROGRESS, quiz_attempt::OVERDUE], true)) {
             return self::STATUS_INPROGRESS;
         }
-        if (in_array($attempt->state, [quiz_attempt::FINISHED, quiz_attempt::SUBMITTED], true)) {
+        if (in_array($attempt->state, self::completed_attempt_states(), true)) {
             return self::STATUS_COMPLETED;
         }
         return self::STATUS_NOTSTARTED;
@@ -233,6 +279,7 @@ class monitor_manager {
         $answered = 0;
         $timeremaining = null;
         $timeremainingdisplay = '';
+        $attemptendat = null;
 
         if ($attempt !== null && $status !== self::STATUS_NOTSTARTED) {
             try {
@@ -241,6 +288,10 @@ class monitor_manager {
                 if ($status === self::STATUS_INPROGRESS) {
                     $accessmanager = $attemptobj->get_access_manager($now);
                     $timeremaining = $accessmanager->get_time_left_display($attempt, $now);
+                    $endtime = $accessmanager->get_end_time($attempt);
+                    if ($endtime !== false) {
+                        $attemptendat = (int) $endtime;
+                    }
                     if ($timeremaining !== false && $timeremaining >= 0) {
                         $timeremainingdisplay = self::format_duration((int) $timeremaining);
                     } else if ($timeremaining !== false && $timeremaining < 0) {
@@ -264,6 +315,8 @@ class monitor_manager {
         $presentation = self::get_status_presentation($status);
         $progresspercent = self::compute_progress_percent($status, $answered, $totalquestions);
 
+        $canextend = extend_time_manager::user_can_extend($context);
+
         return (object) [
             'userid' => (int) $user->id,
             'fullname' => fullname($user),
@@ -281,6 +334,9 @@ class monitor_manager {
             'timeremaining' => $timeremaining,
             'timeremainingdisplay' => $timeremainingdisplay,
             'hastimer' => $status === self::STATUS_INPROGRESS && $timeremaining !== null,
+            'searchtext' => self::build_searchtext($user, $showemail),
+            'attemptendat' => $attemptendat,
+            'canextend' => $canextend,
         ];
     }
 
