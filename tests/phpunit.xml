@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
+    bootstrap="../../../../lib/phpunit/bootstrap.php"
+    convertErrorsToExceptions="true"
+    convertNoticesToExceptions="true"
+    convertWarningsToExceptions="true"
+    beStrictAboutOutputDuringTests="true"
+    beStrictAboutTestsThatDoNotTestAnything="false"
+    beStrictAboutTodoAnnotatedTests="true">
+    <testsuites>
+        <testsuite name="quiz_livequizmonitor_testsuite">
+            <directory suffix="_test.php">.</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

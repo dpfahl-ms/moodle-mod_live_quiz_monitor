@@ -1,0 +1,34 @@
+<div class="livequizmonitor-root" data-region="live-quiz-monitor"
+     data-cmid="{{cmid}}"
+     data-groupid="{{groupid}}"
+     data-pollinterval="{{pollinterval}}"
+     data-lastupdated-prefix="{{lastupdatedprefix}}">
+
+    <div class="livequizmonitor-header d-flex flex-wrap align-items-center justify-content-between mb-3">
+        <div>
+            <h2 class="livequizmonitor-title mb-1">{{quizname}}</h2>
+            <div class="livequizmonitor-meta text-muted small">
+                <span class="livequizmonitor-live badge bg-success me-2">{{liveindicator}}</span>
+                <span data-region="last-updated">{{updatedattext}}</span>
+            </div>
+        </div>
+        <div class="livequizmonitor-stale alert alert-warning py-1 px-2 mb-0 d-none" data-region="stale-indicator" role="status">
+            {{staleindicator}}
+        </div>
+    </div>
+
+    {{#hasstudents}}
+        {{> quiz_livequizmonitor/summary_tiles }}
+        {{> quiz_livequizmonitor/student_table }}
+    {{/hasstudents}}
+
+    {{^hasstudents}}
+        <div class="alert alert-info" data-region="empty-cohort">{{emptycohort}}</div>
+    {{/hasstudents}}
+</div>
+
+{{#js}}
+require(['quiz_livequizmonitor/monitor'], function(Monitor) {
+    Monitor.init('[data-region="live-quiz-monitor"]');
+});
+{{/js}}

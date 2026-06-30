@@ -1,0 +1,73 @@
+/* Live quiz monitor report styles. */
+
+.livequizmonitor-root {
+    margin-top: 0.5rem;
+}
+
+.livequizmonitor-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.livequizmonitor-tile {
+    border-left: 4px solid transparent;
+    height: 100%;
+}
+
+.livequizmonitor-tile-label {
+    font-size: 0.875rem;
+    color: var(--bs-secondary-color, #6c757d);
+    margin-bottom: 0.25rem;
+}
+
+.livequizmonitor-tile-count {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.livequizmonitor-tile-percent {
+    font-size: 0.875rem;
+    color: var(--bs-secondary-color, #6c757d);
+}
+
+.livequizmonitor-status-inprogress,
+.livequizmonitor-tile.livequizmonitor-status-inprogress {
+    border-left-color: var(--bs-warning, #ffc107);
+}
+
+.livequizmonitor-status-notstarted,
+.livequizmonitor-tile.livequizmonitor-status-notstarted {
+    border-left-color: var(--bs-secondary, #6c757d);
+}
+
+.livequizmonitor-status-completed,
+.livequizmonitor-tile.livequizmonitor-status-completed {
+    border-left-color: var(--bs-success, #198754);
+}
+
+.badge.livequizmonitor-status-inprogress {
+    background-color: var(--bs-warning, #ffc107);
+    color: var(--bs-dark, #212529);
+}
+
+.badge.livequizmonitor-status-notstarted {
+    background-color: var(--bs-secondary, #6c757d);
+}
+
+.badge.livequizmonitor-status-completed {
+    background-color: var(--bs-success, #198754);
+}
+
+.livequizmonitor-timer {
+    font-variant-numeric: tabular-nums;
+    font-family: var(--bs-font-monospace, monospace);
+}
+
+.livequizmonitor-stale {
+    font-size: 0.875rem;
+}
+
+.livequizmonitor-table .badge {
+    min-width: 6rem;
+}

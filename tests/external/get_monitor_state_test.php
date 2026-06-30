@@ -1,0 +1,94 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * External API tests for get_monitor_state.
+ *
+ * @package   quiz_livequizmonitor
+ * @copyright 2026 SSYSTEMS
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+namespace quiz_livequizmonitor\external;
+
+use advanced_testcase;
+use quiz_livequizmonitor\external\get_monitor_state;
+use required_capability_exception;
+
+/**
+ * Tests for the get_monitor_state external function.
+ *
+ * @covers \quiz_livequizmonitor\external\get_monitor_state
+ */
+final class get_monitor_state_test extends advanced_testcase {
+
+    /**
+     * Teacher with capability receives valid payload shape.
+     */
+    public function test_execute_returns_monitor_state(): void {
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $teacher = $generator->create_user();
+        $student = $generator->create_user();
+        $generator->enrol_user($teacher->id, $course->id, 'editingteacher');
+        $generator->enrol_user($student->id, $course->id, 'student');
+
+        $quizgenerator = $generator->get_plugin_generator('mod_quiz');
+        $questiongenerator = $generator->get_plugin_generator('core_question');
+        $quiz = $quizgenerator->create_instance(['course' => $course->id, 'grade' => 100, 'sumgrades' => 1]);
+        $cm = get_coursemodule_from_instance('quiz', $quiz->id, $course->id, false, MUST_EXIST);
+        $cat = $questiongenerator->create_question_category(['contextid' => \context_module::instance($cm->id)->id]);
+        $question = $questiongenerator->create_question('shortanswer', null, ['category' => $cat->id]);
+        quiz_add_quiz_question($question->id, $quiz);
+
+        $this->setUser($student);
+        $quizgenerator->create_attempt($quiz->id, $student->id);
+
+        $this->setUser($teacher);
+        $result = get_monitor_state::execute($cm->id, 0);
+
+        $this->assertSame((int) $quiz->id, $result['quizid']);
+        $this->assertSame((int) $cm->id, $result['cmid']);
+        $this->assertTrue($result['hasstudents']);
+        $this->assertArrayHasKey('summary', $result);
+        $this->assertArrayHasKey('students', $result);
+        $this->assertCount(1, $result['students']);
+        $this->assertSame('inprogress', $result['students'][0]['status']);
+    }
+
+    /**
+     * Student without report capability cannot call the external function.
+     */
+    public function test_execute_requires_capability(): void {
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $student = $generator->create_user();
+        $generator->enrol_user($student->id, $course->id, 'student');
+
+        $quizgenerator = $generator->get_plugin_generator('mod_quiz');
+        $quiz = $quizgenerator->create_instance(['course' => $course->id, 'grade' => 100]);
+        $cm = get_coursemodule_from_instance('quiz', $quiz->id, $course->id, false, MUST_EXIST);
+
+        $this->setUser($student);
+
+        $this->expectException(required_capability_exception::class);
+        get_monitor_state::execute($cm->id, 0);
+    }
+}

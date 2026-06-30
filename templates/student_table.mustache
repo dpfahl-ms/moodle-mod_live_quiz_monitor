@@ -1,0 +1,37 @@
+<div class="table-responsive" data-region="student-table">
+    <table class="table table-striped generaltable livequizmonitor-table">
+        <thead>
+            <tr>
+                <th>{{tableheaders.status}}</th>
+                <th>{{tableheaders.student}}</th>
+                {{#showemailcolumn}}
+                <th>{{tableheaders.email}}</th>
+                {{/showemailcolumn}}
+                <th>{{tableheaders.progress}}</th>
+                <th>{{tableheaders.timeremaining}}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#students}}
+            <tr data-userid="{{userid}}">
+                <td>
+                    <span class="badge {{statusclass}}">{{statuslabel}}</span>
+                </td>
+                <td>{{fullname}}</td>
+                {{#showemailcolumn}}
+                <td>{{email}}</td>
+                {{/showemailcolumn}}
+                <td data-field="progress">{{progresstext}}</td>
+                <td>
+                    {{#hastimer}}
+                    <span class="livequizmonitor-timer" data-field="timer" data-timeremaining="{{timeremaining}}">{{timeremainingdisplay}}</span>
+                    {{/hastimer}}
+                    {{^hastimer}}
+                    <span class="livequizmonitor-timer" data-field="timer">—</span>
+                    {{/hastimer}}
+                </td>
+            </tr>
+            {{/students}}
+        </tbody>
+    </table>
+</div>
