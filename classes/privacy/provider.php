@@ -33,6 +33,7 @@ use core_privacy\local\request\contextlist;
 use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
+use stdClass;
 
 /**
  * Privacy provider for student supervision notes.
@@ -98,7 +99,7 @@ class provider implements
             return;
         }
 
-        $userid = $contextlist->get_user()->id;
+        $userid = (int) $contextlist->get_user()->id;
 
         foreach ($contextlist->get_contexts() as $context) {
             if ($context->contextlevel !== CONTEXT_MODULE) {
@@ -106,27 +107,49 @@ class provider implements
             }
 
             $cm = get_coursemodule_from_id('quiz', $context->instanceid);
-            $records = $DB->get_records('quiz_livequizmonitor_notes', [
-                'quizid' => $cm->instance,
-                'userid' => $userid,
-            ]);
+            $records = $DB->get_records_sql(
+                "SELECT *
+                   FROM {quiz_livequizmonitor_notes}
+                  WHERE quizid = :quizid
+                    AND (userid = :userid OR usermodified = :usermodified)",
+                [
+                    'quizid' => $cm->instance,
+                    'userid' => $userid,
+                    'usermodified' => $userid,
+                ]
+            );
 
             if (!$records) {
                 continue;
             }
 
-            $export = [];
+            $notesaboutuser = [];
+            $notesauthored = [];
+
             foreach ($records as $record) {
-                $export[] = (object) [
-                    'content' => $record->content,
-                    'timemodified' => transform::datetime($record->timemodified),
-                    'usermodified' => transform::user($record->usermodified),
-                ];
+                if ((int) $record->userid === $userid) {
+                    $notesaboutuser[] = self::export_note_about_user($record);
+                }
+                if ((int) $record->usermodified === $userid && (int) $record->userid !== $userid) {
+                    $notesauthored[] = self::export_note_authored_by_user($record);
+                }
+            }
+
+            $export = new stdClass();
+            if ($notesaboutuser !== []) {
+                $export->notes_about_user = $notesaboutuser;
+            }
+            if ($notesauthored !== []) {
+                $export->notes_authored_by_user = $notesauthored;
+            }
+
+            if ($notesaboutuser === [] && $notesauthored === []) {
+                continue;
             }
 
             writer::with_context($context)->export_data(
                 [get_string('pluginname', 'quiz_livequizmonitor')],
-                (object) ['notes' => $export]
+                $export
             );
         }
     }
@@ -157,9 +180,7 @@ class provider implements
      * @param approved_contextlist $contextlist Approved contexts.
      */
     public static function delete_data_for_user(approved_contextlist $contextlist): void {
-        global $DB;
-
-        $userid = $contextlist->get_user()->id;
+        $userid = (int) $contextlist->get_user()->id;
 
         foreach ($contextlist->get_contexts() as $context) {
             if ($context->contextlevel !== CONTEXT_MODULE) {
@@ -167,10 +188,7 @@ class provider implements
             }
 
             $cm = get_coursemodule_from_id('quiz', $context->instanceid);
-            $DB->delete_records('quiz_livequizmonitor_notes', [
-                'quizid' => $cm->instance,
-                'userid' => $userid,
-            ]);
+            self::purge_user_notes_in_quiz((int) $cm->instance, $userid);
         }
     }
 
@@ -196,7 +214,8 @@ class provider implements
                 UNION
                 SELECT usermodified AS userid
                   FROM {quiz_livequizmonitor_notes}
-                 WHERE quizid = :quizid2";
+                 WHERE quizid = :quizid2
+                   AND usermodified IS NOT NULL";
 
         $userlist->add_from_sql($sql, ['quizid' => $cm->instance, 'quizid2' => $cm->instance]);
     }
@@ -207,21 +226,89 @@ class provider implements
      * @param approved_userlist $userlist Approved user list.
      */
     public static function delete_data_for_users(approved_userlist $userlist): void {
-        global $DB;
-
         $context = $userlist->get_context();
         if ($context->contextlevel !== CONTEXT_MODULE) {
             return;
         }
 
         $cm = get_coursemodule_from_id('quiz', $context->instanceid);
-        $quizid = $cm->instance;
+        $quizid = (int) $cm->instance;
 
         foreach ($userlist->get_userids() as $userid) {
-            $DB->delete_records('quiz_livequizmonitor_notes', [
-                'quizid' => $quizid,
-                'userid' => $userid,
-            ]);
+            self::purge_user_notes_in_quiz($quizid, (int) $userid);
         }
+    }
+
+    /**
+     * Remove or anonymise one user's note data within a quiz.
+     *
+     * Subject notes are deleted; author attribution is cleared on remaining rows.
+     *
+     * @param int $quizid Quiz instance id.
+     * @param int $userid User requesting erasure.
+     */
+    private static function purge_user_notes_in_quiz(int $quizid, int $userid): void {
+        global $DB;
+
+        $DB->delete_records('quiz_livequizmonitor_notes', [
+            'quizid' => $quizid,
+            'userid' => $userid,
+        ]);
+
+        $DB->set_field_select(
+            'quiz_livequizmonitor_notes',
+            'usermodified',
+            null,
+            'quizid = :quizid AND usermodified = :usermodified',
+            ['quizid' => $quizid, 'usermodified' => $userid]
+        );
+    }
+
+    /**
+     * Build export item for notes where the user is the subject.
+     *
+     * @param stdClass $record Note row.
+     * @return stdClass
+     */
+    private static function export_note_about_user(stdClass $record): stdClass {
+        $item = (object) [
+            'content' => $record->content,
+            'timemodified' => transform::datetime($record->timemodified),
+        ];
+
+        $author = self::export_user_reference($record->usermodified);
+        if ($author !== null) {
+            $item->usermodified = $author;
+        }
+
+        return $item;
+    }
+
+    /**
+     * Build export item for notes authored by the requesting user.
+     *
+     * @param stdClass $record Note row.
+     * @return stdClass
+     */
+    private static function export_note_authored_by_user(stdClass $record): stdClass {
+        return (object) [
+            'content' => $record->content,
+            'timemodified' => transform::datetime($record->timemodified),
+            'subject_user' => transform::user($record->userid),
+        ];
+    }
+
+    /**
+     * Transform a user id for export, skipping empty author references.
+     *
+     * @param int|null $userid User id or null when author was erased.
+     * @return mixed|null Transformed user data or null.
+     */
+    private static function export_user_reference(?int $userid) {
+        if (empty($userid)) {
+            return null;
+        }
+
+        return transform::user($userid);
     }
 }
