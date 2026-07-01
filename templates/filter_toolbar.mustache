@@ -1,24 +1,22 @@
 <div class="livequizmonitor-filter-toolbar mb-3" data-region="filter-toolbar">
-    <div class="d-flex flex-wrap align-items-center gap-2">
-        <div class="livequizmonitor-search flex-grow-0">
+    <div class="livequizmonitor-filter-toolbar-row d-flex flex-wrap align-items-center" role="toolbar" aria-label="{{filter.chipsgrouplabel}}">
+        <div class="livequizmonitor-search-card flex-grow-0">
             <input type="search"
-                   class="form-control form-control-sm"
+                   class="livequizmonitor-search-input"
                    data-action="search"
                    placeholder="{{filter.searchplaceholder}}"
                    aria-label="{{filter.searchplaceholder}}">
         </div>
-        <div class="livequizmonitor-filter-chips d-flex flex-wrap gap-1" role="group" aria-label="{{filter.chipsgrouplabel}}">
-            {{#filter.chips}}
-                <button type="button"
-                        class="btn btn-sm livequizmonitor-filter-chip{{#active}} active{{/active}}"
-                        data-action="filter-status"
-                        data-status="{{status}}"
-                        aria-pressed="{{#active}}true{{/active}}{{^active}}false{{/active}}">
-                    {{label}} (<span data-filter-count="{{status}}">{{count}}</span>)
-                </button>
-            {{/filter.chips}}
-        </div>
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-action="clear-filters">
+        {{#filter.chips}}
+            <button type="button"
+                    class="btn{{#active}} btn-primary{{/active}}{{^active}} btn-outline-secondary{{/active}}"
+                    data-action="filter-status"
+                    data-status="{{status}}"
+                    aria-pressed="{{#active}}true{{/active}}{{^active}}false{{/active}}">
+                {{label}} (<span data-filter-count="{{status}}">{{count}}</span>)
+            </button>
+        {{/filter.chips}}
+        <button type="button" class="btn btn-outline-secondary" data-action="clear-filters">
             {{filter.clearlabel}}
         </button>
     </div>

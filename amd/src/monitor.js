@@ -49,7 +49,7 @@ class MonitorComponent extends BaseComponent {
             PROGRESSLABEL: '[data-field="progress"] .livequizmonitor-progress-label',
             TIMER: '[data-field="timer"]',
             SEARCHINPUT: '[data-action="search"]',
-            FILTERCHIP: '[data-action="filter-status"]',
+            FILTERCHIP: '.livequizmonitor-filter-toolbar [data-action="filter-status"]',
             CLEARFILTERS: '[data-action="clear-filters"]',
             FILTEREMPTY: '[data-region="filter-empty"]',
             STUDENTTABLE: '[data-region="student-table"]',
@@ -286,7 +286,7 @@ class MonitorComponent extends BaseComponent {
      * @param {Event} event
      */
     handleFilterClick(event) {
-        const trigger = event.target.closest(this.selectors.FILTERCHIP);
+        const trigger = event.target.closest('[data-action="filter-status"]');
         if (!trigger || !this.element.contains(trigger)) {
             return;
         }
@@ -503,7 +503,9 @@ class MonitorComponent extends BaseComponent {
         this.element.querySelectorAll(this.selectors.FILTERCHIP).forEach((chip) => {
             const status = chip.dataset.status;
             const isActive = status === activeStatus;
-            chip.classList.toggle('active', isActive);
+            chip.classList.remove('active', 'livequizmonitor-filter-chip', 'btn-sm');
+            chip.classList.toggle('btn-primary', isActive);
+            chip.classList.toggle('btn-outline-secondary', !isActive);
             chip.setAttribute('aria-pressed', isActive ? 'true' : 'false');
             const countEl = chip.querySelector(`[data-filter-count="${status}"]`);
             if (countEl && status in counts) {
@@ -514,6 +516,7 @@ class MonitorComponent extends BaseComponent {
         this.element.querySelectorAll(this.selectors.SUMMARYTILE).forEach((tile) => {
             const status = tile.dataset.status;
             const isActive = status === activeStatus;
+            tile.classList.remove('btn-primary', 'btn-outline-secondary');
             tile.classList.toggle('livequizmonitor-tile-active', isActive);
             tile.setAttribute('aria-pressed', isActive ? 'true' : 'false');
         });
