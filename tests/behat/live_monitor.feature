@@ -173,3 +173,41 @@ Feature: Live quiz monitor report
     And I click on "Unblock" "button"
     Then ".livequizmonitor-blocked-flag" "css_element" should not exist
     And ".livequizmonitor-row-actions [data-action='unblock-student'].disabled" "css_element" should exist
+
+  @javascript @cohortsync
+  Scenario: Newly enrolled student appears without reload
+    Given the following "users" exist:
+      | username | firstname | lastname | email              |
+      | student3 | Chris     | Cohort   | student3@test.com  |
+    When I am on the "Quiz 1" "quiz activity" page
+    And I navigate to "Reports" in current page administration
+    And I follow "Live Monitor"
+    Then I should see "Sam Student"
+    And I should not see "Chris Cohort"
+    When the following "course enrolments" exist:
+      | user     | course | role    |
+      | student3 | C1     | student |
+    And I wait "6" seconds
+    Then I should see "Chris Cohort"
+
+  @javascript @cohortsync
+  Scenario: Unenrolled student row disappears without reload
+    When I am on the "Quiz 1" "quiz activity" page
+    And I navigate to "Reports" in current page administration
+    And I follow "Live Monitor"
+    Then I should see "Alex Other"
+    When I unenrol user "student2" from course "C1"
+    And I wait "6" seconds
+    Then I should not see "Alex Other"
+
+  @javascript @cohortsync
+  Scenario: Status update still works without page reload
+    Given I am on the "Quiz 1" "quiz activity" page logged in as "student1"
+    And I press "Attempt quiz now"
+    And I log in as "teacher1"
+    When I am on the "Quiz 1" "quiz activity" page
+    And I navigate to "Reports" in current page administration
+    And I follow "Live Monitor"
+    And I wait "6" seconds
+    Then I should see "In progress"
+    And I should see "Sam Student"

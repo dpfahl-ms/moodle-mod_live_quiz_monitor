@@ -22,12 +22,16 @@
  */
 
 import Ajax from 'core/ajax';
+import Templates from 'core/templates';
 import {BaseComponent} from 'core/reactive';
 import {matchesFilters, countVisible} from 'quiz_livequizmonitor/filter_utils';
 import {createMonitorReactive, formatDuration} from 'quiz_livequizmonitor/reactive/monitor_state';
 import {showExtendModal} from 'quiz_livequizmonitor/extend_time_modal';
 import {showStudentNoteModal} from 'quiz_livequizmonitor/student_note_modal';
 import {showUnblockModal} from 'quiz_livequizmonitor/unblock_confirm_modal';
+
+/** Fixed background refresh interval in milliseconds. */
+const POLL_INTERVAL_MS = 5000;
 
 /**
  * Reactive component that syncs monitor state to the page DOM.
@@ -54,16 +58,22 @@ class MonitorComponent extends BaseComponent {
             CLEARFILTERS: '[data-action="clear-filters"]',
             FILTEREMPTY: '[data-region="filter-empty"]',
             STUDENTTABLE: '[data-region="student-table"]',
+            COHORTCONTENT: '[data-region="cohort-content"]',
+            EMPTYCOHORT: '[data-region="empty-cohort"]',
             SUMMARYTILE: '.livequizmonitor-summary-tile',
             EXTENDBULK: '[data-action="extend-bulk"]',
         };
         this.pollTimer = null;
         this.tickTimer = null;
         this.pollInFlight = false;
+        this.syncInFlight = false;
+        this.syncQueued = false;
+        this.hasReceivedPoll = false;
         const root = descriptor.element ?? this.element;
         this.cmid = parseInt(descriptor.cmid ?? root.dataset.cmid, 10);
         this.groupid = parseInt(descriptor.groupid ?? root.dataset.groupid ?? 0, 10);
-        this.pollinterval = parseInt(descriptor.pollinterval ?? root.dataset.pollinterval ?? 5, 10);
+        this.showEmailColumn = root.dataset.showEmail === '1';
+        this.showActionsColumn = root.dataset.showActions === '1';
         this.lastUpdatedPrefix = root.dataset.lastupdatedPrefix ?? '';
         this.extendRowLabel = root.dataset.extendRowLabel ?? 'Extend time';
         this.noteAddLabel = root.dataset.notesAddLabel ?? 'Add note';
@@ -98,6 +108,7 @@ class MonitorComponent extends BaseComponent {
             {watch: 'summary.inprogress:updated', handler: this.renderSummary},
             {watch: 'summary.completed:updated', handler: this.renderSummary},
             {watch: 'students:created', handler: this.renderStudents},
+            {watch: 'students:deleted', handler: this.renderStudents},
             {watch: 'students:updated', handler: this.renderStudents},
             {watch: 'students.timeremaining:updated', handler: this.renderStudents},
             {watch: 'students.progresstext:updated', handler: this.renderStudents},
@@ -113,6 +124,7 @@ class MonitorComponent extends BaseComponent {
             {watch: 'students.unblockactionenabled:updated', handler: this.renderStudents},
             {watch: 'meta.onesessionactive:updated', handler: this.renderStudents},
             {watch: 'meta.canunblock:updated', handler: this.renderStudents},
+            {watch: 'meta.hasstudents:updated', handler: this.renderCohortLayout},
             {watch: 'summary.notstarted:updated', handler: this.renderFilterToolbar},
             {watch: 'summary.inprogress:updated', handler: this.renderFilterToolbar},
             {watch: 'summary.inprogress:updated', handler: this.renderBulkExtendButton},
@@ -130,9 +142,9 @@ class MonitorComponent extends BaseComponent {
         this.bindNoteEvents();
         this.startPolling();
         this.startTimerTick();
+        this.renderCohortLayout();
         this.renderFilterToolbar();
         this.renderBulkExtendButton();
-        this.applyRowVisibility();
     }
 
     /**
@@ -433,9 +445,8 @@ class MonitorComponent extends BaseComponent {
      * Begin Ajax polling loop.
      */
     startPolling() {
-        const interval = Math.max(3, Math.min(30, this.pollinterval)) * 1000;
         this.poll();
-        this.pollTimer = setInterval(() => this.poll(), interval);
+        this.pollTimer = setInterval(() => this.poll(), POLL_INTERVAL_MS);
     }
 
     /**
@@ -470,6 +481,9 @@ class MonitorComponent extends BaseComponent {
                 this.canunblock = !!response.canunblock;
             }
             this.reactive.dispatch('refreshState', response);
+            this.hasReceivedPoll = true;
+            this.renderCohortLayout();
+            await this.syncStudentTable();
         } catch (e) {
             this.reactive.dispatch('setStale', true);
         } finally {
@@ -543,6 +557,246 @@ class MonitorComponent extends BaseComponent {
             return [...students.values()];
         }
         return students;
+    }
+
+    /**
+     * Return the student table tbody element.
+     *
+     * @returns {HTMLElement|null}
+     */
+    getStudentTableBody() {
+        const tableRegion = this.getElement(this.selectors.STUDENTTABLE);
+        return tableRegion?.querySelector('tbody') ?? null;
+    }
+
+    /**
+     * Update root column flags from the latest poll payload.
+     */
+    updateColumnFlags() {
+        const students = this.getStudentRows();
+        if (students.length === 0) {
+            return;
+        }
+        this.showActionsColumn = true;
+        this.element.dataset.showActions = '1';
+        if (students[0].showemail) {
+            this.showEmailColumn = true;
+            this.element.dataset.showEmail = '1';
+        }
+    }
+
+    /**
+     * Build Mustache context for a single student row.
+     *
+     * @param {object} student Student state row
+     * @returns {object}
+     */
+    buildStudentRowContext(student) {
+        const canextend = !!(student.canextend ?? this.canextend);
+        return {
+            userid: student.userid ?? student.id,
+            fullname: student.fullname ?? '',
+            email: student.email ?? '',
+            statusclass: student.statusclass ?? '',
+            statuslabel: student.statuslabel ?? '',
+            progresspercent: student.progresspercent ?? 0,
+            progressbarclass: student.progressbarclass ?? '',
+            progresstext: student.progresstext ?? '',
+            hastimer: !!student.hastimer,
+            timeremaining: student.timeremaining,
+            timeremainingdisplay: student.timeremainingdisplay || formatDuration(student.timeremaining ?? 0),
+            showemailcolumn: this.showEmailColumn || !!student.showemail,
+            showactionscolumn: this.showActionsColumn,
+            canextend,
+            extendactionenabled: canextend && this.isExtendActionEnabled(student),
+            onesessionactive: !!(student.onesessionactive ?? this.onesessionactive),
+            unblockactionenabled: !!student.unblockactionenabled,
+            isblocked: !!student.isblocked,
+            hasnote: !!student.hasnote,
+            attemptendat: student.attemptendat ?? '',
+            attemptid: student.attemptid ?? '',
+            notelabel: student.hasnote ? this.noteEditLabel : this.noteAddLabel,
+            extendrowlabel: this.extendRowLabel,
+            unblocklabel: this.unblockRowLabel,
+            blockedflaglabel: this.blockedFlagLabel,
+            actionsmenulabel: this.actionsMenuLabel,
+        };
+    }
+
+    /**
+     * Render and insert a student row at the given tbody index.
+     *
+     * @param {object} student Student state row
+     * @param {number} insertIndex Target row index
+     * @returns {Promise<HTMLElement|null>}
+     */
+    async insertStudentRow(student, insertIndex) {
+        const tbody = this.getStudentTableBody();
+        if (!tbody) {
+            return null;
+        }
+
+        const {html, js} = await Templates.renderForPromise(
+            'quiz_livequizmonitor/student_row',
+            this.buildStudentRowContext(student)
+        );
+        if (js) {
+            Templates.runTemplateJS(js);
+        }
+
+        const template = document.createElement('template');
+        template.innerHTML = html.trim();
+        let row = template.content.querySelector('tr[data-userid]');
+        if (!row) {
+            // Fallback parser for browsers that strip lone <tr> nodes.
+            const table = document.createElement('table');
+            table.innerHTML = html.trim();
+            row = table.querySelector('tr[data-userid]');
+        }
+        if (!row) {
+            return null;
+        }
+
+        const rows = tbody.querySelectorAll('tr[data-userid]');
+        if (insertIndex >= rows.length) {
+            tbody.appendChild(row);
+        } else {
+            tbody.insertBefore(row, rows[insertIndex]);
+        }
+
+        return row;
+    }
+
+    /**
+     * Toggle empty-cohort vs cohort-content regions.
+     */
+    renderCohortLayout() {
+        const hasstudents = !!this.getState()?.meta?.hasstudents;
+        const emptyEl = this.getElement(this.selectors.EMPTYCOHORT);
+        const cohortEl = this.getElement(this.selectors.COHORTCONTENT);
+
+        if (emptyEl) {
+            emptyEl.classList.toggle('d-none', hasstudents);
+        }
+        if (cohortEl) {
+            cohortEl.classList.toggle('d-none', !hasstudents);
+        }
+
+        if (!hasstudents) {
+            const tbody = this.getStudentTableBody();
+            if (tbody) {
+                tbody.innerHTML = '';
+            }
+        }
+    }
+
+    /**
+     * Sync tbody rows with reactive student state (insert, remove, reorder, patch).
+     *
+     * @returns {Promise<void>}
+     */
+    async syncStudentTable() {
+        if (this.syncInFlight) {
+            this.syncQueued = true;
+            return;
+        }
+        this.syncInFlight = true;
+        try {
+            this.updateColumnFlags();
+            const students = this.getStudentRows();
+            const tbody = this.getStudentTableBody();
+            if (!tbody) {
+                return;
+            }
+
+            const stateIds = new Set(students.map((student) => String(student.userid ?? student.id)));
+
+            if (this.hasReceivedPoll) {
+                tbody.querySelectorAll('tr[data-userid]').forEach((row) => {
+                    if (!stateIds.has(row.dataset.userid)) {
+                        row.remove();
+                    }
+                });
+            }
+
+            for (let index = 0; index < students.length; index++) {
+                const student = students[index];
+                const userid = String(student.userid ?? student.id);
+                let row = tbody.querySelector(`tr[data-userid="${userid}"]`);
+
+                if (!row) {
+                    row = await this.insertStudentRow(student, index);
+                } else {
+                    const rows = [...tbody.querySelectorAll('tr[data-userid]')];
+                    const currentIndex = rows.indexOf(row);
+                    if (currentIndex !== index) {
+                        const reference = rows[index] ?? null;
+                        if (reference && reference !== row) {
+                            tbody.insertBefore(row, reference);
+                        } else if (!reference) {
+                            tbody.appendChild(row);
+                        }
+                    }
+                    this.updateStudentRow(row, student);
+                }
+            }
+
+            this.applyRowVisibility();
+            this.renderFilterEmpty();
+        } finally {
+            this.syncInFlight = false;
+            if (this.syncQueued) {
+                this.syncQueued = false;
+                await this.syncStudentTable();
+            }
+        }
+    }
+
+    /**
+     * Patch an existing student row from state.
+     *
+     * @param {HTMLElement} row Table row element
+     * @param {object} student Student state row
+     */
+    updateStudentRow(row, student) {
+        const badge = row.querySelector(this.selectors.STATUSBADGE);
+        if (badge) {
+            badge.textContent = student.statuslabel;
+            badge.className = `badge ${student.statusclass}`;
+        }
+        const progress = row.querySelector(this.selectors.PROGRESS);
+        if (progress) {
+            const bar = row.querySelector(this.selectors.PROGRESSBAR);
+            const container = row.querySelector(this.selectors.PROGRESSCONTAINER);
+            const label = row.querySelector(this.selectors.PROGRESSLABEL);
+            const percent = student.progresspercent ?? 0;
+
+            if (bar) {
+                bar.style.width = `${percent}%`;
+                bar.className = `progress-bar ${student.progressbarclass ?? ''}`.trim();
+            }
+            if (container) {
+                container.setAttribute('aria-valuenow', String(percent));
+                if (student.progresstext) {
+                    container.setAttribute('aria-label', student.progresstext);
+                }
+            }
+            if (label) {
+                label.textContent = student.progresstext ?? '';
+                label.classList.toggle('d-none', !student.progresstext);
+            }
+        }
+        const timer = row.querySelector(this.selectors.TIMER);
+        if (timer) {
+            if (student.hastimer && student.timeremaining !== null && student.timeremaining !== undefined) {
+                timer.dataset.timeremaining = student.timeremaining;
+                timer.textContent = student.timeremainingdisplay || formatDuration(student.timeremaining);
+            } else {
+                timer.removeAttribute('data-timeremaining');
+                timer.textContent = '—';
+            }
+        }
+        this.renderRowActions(student, row);
     }
 
     /**
@@ -800,8 +1054,10 @@ class MonitorComponent extends BaseComponent {
         let flag = inner.querySelector('.livequizmonitor-blocked-flag');
         if (student.isblocked) {
             if (!flag) {
+                const flagTitle = this.escapeHtml(this.blockedFlagLabel);
                 inner.insertAdjacentHTML('beforeend',
-                    `<i class="fa-solid fa-flag livequizmonitor-blocked-flag" title="${this.escapeHtml(this.blockedFlagLabel)}" aria-hidden="true"></i>`
+                    '<i class="fa-solid fa-flag livequizmonitor-blocked-flag" ' +
+                    `title="${flagTitle}" aria-hidden="true"></i>`
                 );
             }
         } else if (flag) {
@@ -895,52 +1151,8 @@ class MonitorComponent extends BaseComponent {
      * Update student table rows from state.
      */
     renderStudents() {
-        this.getStudentRows().forEach((student) => {
-            const userid = student.userid ?? student.id;
-            const row = this.element.querySelector(`tr[data-userid="${userid}"]`);
-            if (!row) {
-                return;
-            }
-            const badge = row.querySelector(this.selectors.STATUSBADGE);
-            if (badge) {
-                badge.textContent = student.statuslabel;
-                badge.className = `badge ${student.statusclass}`;
-            }
-            const progress = row.querySelector(this.selectors.PROGRESS);
-            if (progress) {
-                const bar = row.querySelector(this.selectors.PROGRESSBAR);
-                const container = row.querySelector(this.selectors.PROGRESSCONTAINER);
-                const label = row.querySelector(this.selectors.PROGRESSLABEL);
-                const percent = student.progresspercent ?? 0;
-
-                if (bar) {
-                    bar.style.width = `${percent}%`;
-                    bar.className = `progress-bar ${student.progressbarclass ?? ''}`.trim();
-                }
-                if (container) {
-                    container.setAttribute('aria-valuenow', String(percent));
-                    if (student.progresstext) {
-                        container.setAttribute('aria-label', student.progresstext);
-                    }
-                }
-                if (label) {
-                    label.textContent = student.progresstext ?? '';
-                    label.classList.toggle('d-none', !student.progresstext);
-                }
-            }
-            const timer = row.querySelector(this.selectors.TIMER);
-            if (timer) {
-                if (student.hastimer && student.timeremaining !== null && student.timeremaining !== undefined) {
-                    timer.dataset.timeremaining = student.timeremaining;
-                    timer.textContent = student.timeremainingdisplay || formatDuration(student.timeremaining);
-                } else {
-                    timer.removeAttribute('data-timeremaining');
-                    timer.textContent = '—';
-                }
-            }
-            this.renderRowActions(student, row);
-        });
-        this.applyRowVisibility();
+        this.renderCohortLayout();
+        this.syncStudentTable();
     }
 }
 
@@ -958,14 +1170,12 @@ export const init = (selector) => {
     const reactive = createMonitorReactive(root);
     const cmid = root.dataset.cmid;
     const groupid = root.dataset.groupid || 0;
-    const pollinterval = root.dataset.pollinterval || 5;
 
     return new MonitorComponent({
         element: root,
         reactive,
         cmid,
         groupid,
-        pollinterval,
     });
 };
 

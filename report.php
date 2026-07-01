@@ -47,11 +47,6 @@ class quiz_livequizmonitor_report extends mod_quiz\local\reports\report_base {
         require_capability('quiz/livequizmonitor:view', $context);
 
         $groupid = groups_get_activity_group($cm, true) ?: 0;
-        $pollinterval = (int) get_config('quiz_livequizmonitor', 'pollinterval');
-        if ($pollinterval <= 0) {
-            $pollinterval = 5;
-        }
-        $pollinterval = max(3, min(30, $pollinterval));
 
         $PAGE->requires->css('/mod/quiz/report/livequizmonitor/styles.css?v=' . get_config('quiz_livequizmonitor', 'version'));
 
@@ -61,7 +56,7 @@ class quiz_livequizmonitor_report extends mod_quiz\local\reports\report_base {
 
         /** @var monitor_renderer $renderer */
         $renderer = $PAGE->get_renderer('quiz_livequizmonitor', 'monitor');
-        $templatecontext = $renderer->export_for_template($state, $pollinterval, $groupid);
+        $templatecontext = $renderer->export_for_template($state, $groupid);
 
         echo $OUTPUT->render_from_template('quiz_livequizmonitor/monitor_page', $templatecontext);
 

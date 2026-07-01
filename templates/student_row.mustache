@@ -1,0 +1,41 @@
+<tr data-userid="{{userid}}">
+    <td>
+        <span class="badge {{statusclass}}">{{statuslabel}}</span>
+    </td>
+    <td>{{fullname}}</td>
+    {{#showemailcolumn}}
+    <td>{{email}}</td>
+    {{/showemailcolumn}}
+    <td data-field="progress">
+        <div class="livequizmonitor-progress">
+            <div class="progress" role="progressbar"
+                 aria-valuenow="{{progresspercent}}" aria-valuemin="0" aria-valuemax="100"
+                 aria-label="{{progresstext}}">
+                <div class="progress-bar {{progressbarclass}}" style="width: {{progresspercent}}%"></div>
+            </div>
+            {{#progresstext}}
+            <small class="livequizmonitor-progress-label text-muted">{{progresstext}}</small>
+            {{/progresstext}}
+        </div>
+    </td>
+    <td>
+        {{#hastimer}}
+        <span class="livequizmonitor-timer" data-field="timer" data-timeremaining="{{timeremaining}}">{{timeremainingdisplay}}</span>
+        {{/hastimer}}
+        {{^hastimer}}
+        <span class="livequizmonitor-timer" data-field="timer">—</span>
+        {{/hastimer}}
+    </td>
+    {{#showactionscolumn}}
+    <td class="livequizmonitor-actions" data-field="actions">
+        <div class="livequizmonitor-actions-inner">
+            {{> quiz_livequizmonitor/row_action_menu }}
+            {{#isblocked}}
+            <i class="fa-solid fa-flag livequizmonitor-blocked-flag"
+               title="{{blockedflaglabel}}"
+               aria-hidden="true"></i>
+            {{/isblocked}}
+        </div>
+    </td>
+    {{/showactionscolumn}}
+</tr>

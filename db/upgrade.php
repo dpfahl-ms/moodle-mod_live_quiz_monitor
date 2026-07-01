@@ -109,5 +109,10 @@ function xmldb_quiz_livequizmonitor_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2025040105, 'quiz', 'livequizmonitor');
     }
 
+    if ($oldversion < 2025040112) {
+        unset_config('pollinterval', 'quiz_livequizmonitor');
+        upgrade_plugin_savepoint(true, 2025040112, 'quiz', 'livequizmonitor');
+    }
+
     return true;
 }

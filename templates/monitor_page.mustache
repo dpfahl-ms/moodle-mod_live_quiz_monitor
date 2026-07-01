@@ -1,7 +1,8 @@
 <div class="livequizmonitor-root" data-region="live-quiz-monitor"
      data-cmid="{{cmid}}"
      data-groupid="{{groupid}}"
-     data-pollinterval="{{pollinterval}}"
+     data-show-email="{{#showemailcolumn}}1{{/showemailcolumn}}{{^showemailcolumn}}0{{/showemailcolumn}}"
+     data-show-actions="{{#showactionscolumn}}1{{/showactionscolumn}}{{^showactionscolumn}}0{{/showactionscolumn}}"
      data-lastupdated-prefix="{{lastupdatedprefix}}"
      data-extend-row-label="{{extendrowlabel}}"
      data-notes-add-label="{{notesaddlabel}}"
@@ -36,15 +37,15 @@
         </div>
     </div>
 
-    {{#hasstudents}}
+    <div class="alert alert-info {{#hasstudents}}d-none{{/hasstudents}}" data-region="empty-cohort" role="status">
+        {{emptycohort}}
+    </div>
+
+    <div data-region="cohort-content" class="{{^hasstudents}}d-none{{/hasstudents}}">
         {{> quiz_livequizmonitor/summary_tiles }}
         {{> quiz_livequizmonitor/filter_toolbar }}
         {{> quiz_livequizmonitor/student_table }}
-    {{/hasstudents}}
-
-    {{^hasstudents}}
-        <div class="alert alert-info" data-region="empty-cohort">{{emptycohort}}</div>
-    {{/hasstudents}}
+    </div>
 </div>
 
 {{#js}}

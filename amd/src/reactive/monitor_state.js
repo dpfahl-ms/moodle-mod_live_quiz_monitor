@@ -65,7 +65,6 @@ export const createInitialState = () => ({
         totalstudents: 0,
         hasstudents: false,
         stale: false,
-        pollinterval: 5,
         groupid: 0,
         filters: {
             search: '',

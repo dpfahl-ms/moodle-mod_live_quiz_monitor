@@ -102,4 +102,21 @@ class behat_quiz_livequizmonitor extends behat_base {
         ]);
         $event->trigger();
     }
+
+    /**
+     * Unenrol a user from a course by shortname (manual enrol plugin).
+     *
+     * @When /^I unenrol user "(?P<username>[^"]*)" from course "(?P<shortname>[^"]*)"$/
+     * @param string $username Student username.
+     * @param string $shortname Course shortname.
+     */
+    public function unenrol_user_from_course(string $username, string $shortname): void {
+        global $DB;
+
+        $user = $DB->get_record('user', ['username' => $username], '*', MUST_EXIST);
+        $course = $DB->get_record('course', ['shortname' => $shortname], '*', MUST_EXIST);
+        $instance = $DB->get_record('enrol', ['courseid' => $course->id, 'enrol' => 'manual'], '*', MUST_EXIST);
+        $plugin = enrol_get_plugin('manual');
+        $plugin->unenrol_user($instance, $user->id);
+    }
 }

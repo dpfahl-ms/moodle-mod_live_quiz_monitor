@@ -39,11 +39,10 @@ class monitor_renderer extends plugin_renderer_base {
      * Prepare template context from monitor state.
      *
      * @param stdClass $state Monitor state from monitor_manager.
-     * @param int $pollinterval Poll interval in seconds.
      * @param int $groupid Active group id.
      * @return array Template context.
      */
-    public function export_for_template(stdClass $state, int $pollinterval, int $groupid): array {
+    public function export_for_template(stdClass $state, int $groupid): array {
         $updated = userdate($state->updatedat, get_string('strftimetime', 'langconfig'));
         $canextend = !empty($state->canextend);
         $inprogresscount = (int) ($state->inprogresscount ?? $state->summary->inprogress->count);
@@ -77,7 +76,6 @@ class monitor_renderer extends plugin_renderer_base {
             'liveindicator' => get_string('liveindicator', 'quiz_livequizmonitor'),
             'staleindicator' => get_string('staleindicator', 'quiz_livequizmonitor'),
             'emptycohort' => get_string('emptycohort', 'quiz_livequizmonitor'),
-            'pollinterval' => $pollinterval,
             'groupid' => $groupid,
             'summary' => (array) $state->summary,
             'students' => $students,
@@ -102,7 +100,7 @@ class monitor_renderer extends plugin_renderer_base {
                 'actions' => get_string('table:actions', 'quiz_livequizmonitor'),
             ],
             'showemailcolumn' => !empty($state->students) && !empty($state->students[0]->showemail),
-            'showactionscolumn' => (bool) $state->hasstudents,
+            'showactionscolumn' => true,
             'filter' => $this->export_filter_context($state),
             'filterempty' => get_string('filter:empty', 'quiz_livequizmonitor'),
         ];
