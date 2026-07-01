@@ -57,6 +57,12 @@
     font-size: 0.875rem;
 }
 
+.livequizmonitor-student-list {
+    /* Reserve space below the last row so action menus open without a scrollbar. */
+    min-height: 16rem;
+    padding-bottom: 10rem;
+}
+
 .livequizmonitor-table .badge {
     min-width: 6rem;
 }
