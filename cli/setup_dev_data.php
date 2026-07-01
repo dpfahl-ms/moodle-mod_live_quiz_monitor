@@ -32,81 +32,10 @@ require_once($CFG->libdir . '/clilib.php');
 require_once($CFG->libdir . '/testing/classes/util.php');
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 require_once($CFG->dirroot . '/question/editlib.php');
+require_once(__DIR__ . '/demo_lib.php');
 
 use core\session\manager;
 use core_question\local\bank\question_version_status;
-use mod_quiz\quiz_attempt;
-
-const COURSE_SHORTNAME = 'QUIZMON';
-const QUIZ_NAME = 'Live Quiz Monitor Demo';
-
-/**
- * Print a line when not running quietly.
- *
- * @param string $message
- * @param bool $quiet
- */
-function setup_log(string $message, bool $quiet): void {
-    if (!$quiet) {
-        mtrace($message);
-    }
-}
-
-/**
- * Resolve an existing user by username or create a demo student.
- *
- * @param string $username
- * @return stdClass
- */
-function setup_get_user(string $username): stdClass {
-    global $DB;
-
-    $user = $DB->get_record('user', ['username' => $username, 'deleted' => 0], '*', IGNORE_MISSING);
-    if (!$user) {
-        $generator = testing_util::get_data_generator();
-        $user = $generator->create_user([
-            'username' => $username,
-            'firstname' => ucfirst($username),
-            'lastname' => 'Student',
-            'email' => $username . '@example.com',
-        ]);
-    }
-    return $user;
-}
-
-/**
- * Enrol users as students when manual enrolment is available.
- *
- * @param int $courseid
- * @param int[] $userids
- * @param bool $quiet
- */
-function setup_enrol_students(int $courseid, array $userids, bool $quiet): void {
-    global $DB;
-
-    $instances = enrol_get_instances($courseid, true);
-    $manual = null;
-    foreach ($instances as $instance) {
-        if ($instance->enrol === 'manual') {
-            $manual = $instance;
-            break;
-        }
-    }
-
-    if (!$manual) {
-        $manualid = enrol_get_plugin('manual')->add_instance($courseid);
-        $manual = $DB->get_record('enrol', ['id' => $manualid], '*', MUST_EXIST);
-    }
-
-    $plugin = enrol_get_plugin('manual');
-    foreach ($userids as $userid) {
-        if ($DB->record_exists('user_enrolments', ['enrolid' => $manual->id, 'userid' => $userid])) {
-            continue;
-        }
-        $plugin->enrol_user($manual, $userid, 5);
-        setup_log("  enrolled user id {$userid}", $quiet);
-    }
-}
 
 /**
  * Create a question category in the given context.
@@ -152,128 +81,106 @@ function setup_save_question(string $qtype, int $categoryid, stdClass $form): st
 }
 
 /**
- * Build post data to simulate a question response submission.
- *
- * @param question_attempt $qa
- * @param string $responsesummary
- * @return array
- */
-function setup_simulated_post_data(question_attempt $qa, string $responsesummary): array {
-    $question = $qa->get_question();
-    if (!$question instanceof question_with_responses) {
-        return [];
-    }
-
-    $postdata = [];
-    $postdata[$qa->get_control_field_name('sequencecheck')] = (string) $qa->get_sequence_check_count();
-    $postdata[$qa->get_flag_field_name()] = (string) (int) $qa->is_flagged();
-
-    $response = $question->un_summarise_response($responsesummary);
-    foreach ($response as $name => $value) {
-        $postdata[$qa->get_qt_field_name($name)] = (string) $value;
-    }
-
-    return $postdata;
-}
-
-/**
- * Submit quiz responses using the public quiz_attempt API.
- *
- * @param int $attemptid
- * @param array $responses slot => response summary
- * @param bool $finish whether to finish the attempt
- */
-function setup_submit_responses(int $attemptid, array $responses, bool $finish): void {
-    $attemptobj = quiz_attempt::create($attemptid);
-    $postdata = [];
-
-    foreach ($responses as $slot => $summary) {
-        $qa = $attemptobj->get_question_attempt($slot);
-        $postdata += setup_simulated_post_data($qa, $summary);
-    }
-
-    $attemptobj->process_submitted_actions(time(), false, $postdata);
-    if ($finish) {
-        $attemptobj->process_finish(time(), false);
-    }
-}
-
-/**
  * Create demo questions and attach them to a quiz.
  *
  * @param stdClass $quiz Quiz record.
  * @param int $contextid Module context id.
- * @return void
+ * @return int Number of questions added.
  */
-function setup_add_demo_questions(stdClass $quiz, int $contextid): void {
+function setup_add_demo_questions(stdClass $quiz, int $contextid): int {
     global $DB;
 
     $category = setup_create_question_category($contextid);
     $feedback = ['text' => 'Well done.', 'format' => FORMAT_HTML];
+    $incorrect = ['text' => 'Incorrect.', 'format' => FORMAT_HTML];
 
-    $shortanswer = setup_save_question('shortanswer', $category->id, (object) [
-        'name' => 'Name an amphibian',
-        'questiontext' => ['text' => 'Name an amphibian: __________', 'format' => FORMAT_HTML],
-        'generalfeedback' => ['text' => 'Frog or toad would have been OK.', 'format' => FORMAT_HTML],
-        'defaultmark' => 1.0,
-        'usecase' => false,
-        'answer' => ['frog', 'toad', '*'],
-        'fraction' => ['1.0', '0.8', '0.0'],
-        'feedback' => [
-            ['text' => 'Frog is a very good answer.', 'format' => FORMAT_HTML],
-            ['text' => 'Toad is an OK answer.', 'format' => FORMAT_HTML],
-            ['text' => 'That is a bad answer.', 'format' => FORMAT_HTML],
-        ],
-    ]);
+    $definitions = [
+        ['type' => 'shortanswer', 'name' => 'Name an amphibian', 'text' => 'Name an amphibian: __________'],
+        ['type' => 'truefalse', 'name' => '2 + 2 equals 4', 'text' => '2 + 2 equals 4.'],
+        ['type' => 'multichoice', 'name' => 'Pick the mammal', 'text' => 'Pick the mammal.'],
+        ['type' => 'shortanswer', 'name' => 'Name a reptile', 'text' => 'Name a reptile: __________'],
+        ['type' => 'truefalse', 'name' => 'The sky is blue', 'text' => 'The sky is blue.'],
+        ['type' => 'multichoice', 'name' => 'Pick a prime number', 'text' => 'Which is a prime number?'],
+        ['type' => 'shortanswer', 'name' => 'Capital of France', 'text' => 'Capital of France: __________'],
+        ['type' => 'truefalse', 'name' => 'Water freezes at 0°C', 'text' => 'Water freezes at 0 degrees Celsius.'],
+        ['type' => 'multichoice', 'name' => 'Pick a colour', 'text' => 'Which is a primary colour?'],
+        ['type' => 'shortanswer', 'name' => 'Name a bird', 'text' => 'Name a bird: __________'],
+    ];
 
-    $truefalse = setup_save_question('truefalse', $category->id, (object) [
-        'name' => '2 + 2 equals 4',
-        'questiontext' => ['text' => '2 + 2 equals 4.', 'format' => FORMAT_HTML],
-        'generalfeedback' => ['text' => 'The answer is true.', 'format' => FORMAT_HTML],
-        'defaultmark' => 1.0,
-        'correctanswer' => '1',
-        'feedbacktrue' => $feedback,
-        'feedbackfalse' => ['text' => 'Incorrect.', 'format' => FORMAT_HTML],
-    ]);
+    $slot = 0;
+    $sumgrades = 0.0;
 
-    $multichoice = setup_save_question('multichoice', $category->id, (object) [
-        'name' => 'Pick the mammal',
-        'questiontext' => ['text' => 'Pick the mammal.', 'format' => FORMAT_HTML],
-        'generalfeedback' => ['text' => 'One is the mammal.', 'format' => FORMAT_HTML],
-        'defaultmark' => 2.0,
-        'noanswers' => 4,
-        'numhints' => 0,
-        'penalty' => 0.3333333,
-        'shuffleanswers' => 1,
-        'answernumbering' => '123',
-        'showstandardinstruction' => 0,
-        'single' => '1',
-        'correctfeedback' => $feedback,
-        'partiallycorrectfeedback' => $feedback,
-        'incorrectfeedback' => ['text' => 'Incorrect.', 'format' => FORMAT_HTML],
-        'shownumcorrect' => 1,
-        'fraction' => ['1.0', '0.0', '0.0', '0.0'],
-        'answer' => [
-            ['text' => 'One', 'format' => FORMAT_PLAIN],
-            ['text' => 'Two', 'format' => FORMAT_PLAIN],
-            ['text' => 'Three', 'format' => FORMAT_PLAIN],
-            ['text' => 'Four', 'format' => FORMAT_PLAIN],
-        ],
-        'feedback' => [
-            ['text' => 'Correct.', 'format' => FORMAT_HTML],
-            ['text' => 'Incorrect.', 'format' => FORMAT_HTML],
-            ['text' => 'Incorrect.', 'format' => FORMAT_HTML],
-            ['text' => 'Incorrect.', 'format' => FORMAT_HTML],
-        ],
-    ]);
+    foreach ($definitions as $definition) {
+        if ($definition['type'] === 'shortanswer') {
+            $question = setup_save_question('shortanswer', $category->id, (object) [
+                'name' => $definition['name'],
+                'questiontext' => ['text' => $definition['text'], 'format' => FORMAT_HTML],
+                'generalfeedback' => ['text' => 'Any reasonable answer counts for the demo.', 'format' => FORMAT_HTML],
+                'defaultmark' => 1.0,
+                'usecase' => false,
+                'answer' => ['frog', 'toad', 'paris', 'eagle', '*'],
+                'fraction' => ['1.0', '0.8', '1.0', '1.0', '0.0'],
+                'feedback' => [
+                    ['text' => 'Correct.', 'format' => FORMAT_HTML],
+                    ['text' => 'Correct.', 'format' => FORMAT_HTML],
+                    ['text' => 'Correct.', 'format' => FORMAT_HTML],
+                    ['text' => 'Correct.', 'format' => FORMAT_HTML],
+                    ['text' => 'Incorrect.', 'format' => FORMAT_HTML],
+                ],
+            ]);
+        } else if ($definition['type'] === 'truefalse') {
+            $question = setup_save_question('truefalse', $category->id, (object) [
+                'name' => $definition['name'],
+                'questiontext' => ['text' => $definition['text'], 'format' => FORMAT_HTML],
+                'generalfeedback' => ['text' => 'True or false.', 'format' => FORMAT_HTML],
+                'defaultmark' => 1.0,
+                'correctanswer' => '1',
+                'feedbacktrue' => $feedback,
+                'feedbackfalse' => $incorrect,
+            ]);
+        } else {
+            $question = setup_save_question('multichoice', $category->id, (object) [
+                'name' => $definition['name'],
+                'questiontext' => ['text' => $definition['text'], 'format' => FORMAT_HTML],
+                'generalfeedback' => ['text' => 'Pick one option.', 'format' => FORMAT_HTML],
+                'defaultmark' => 1.0,
+                'noanswers' => 4,
+                'numhints' => 0,
+                'penalty' => 0.3333333,
+                'shuffleanswers' => 1,
+                'answernumbering' => '123',
+                'showstandardinstruction' => 0,
+                'single' => '1',
+                'correctfeedback' => $feedback,
+                'partiallycorrectfeedback' => $feedback,
+                'incorrectfeedback' => $incorrect,
+                'shownumcorrect' => 1,
+                'fraction' => ['1.0', '0.0', '0.0', '0.0'],
+                'answer' => [
+                    ['text' => 'One', 'format' => FORMAT_PLAIN],
+                    ['text' => 'Two', 'format' => FORMAT_PLAIN],
+                    ['text' => 'Three', 'format' => FORMAT_PLAIN],
+                    ['text' => 'Four', 'format' => FORMAT_PLAIN],
+                ],
+                'feedback' => [
+                    ['text' => 'Correct.', 'format' => FORMAT_HTML],
+                    ['text' => 'Incorrect.', 'format' => FORMAT_HTML],
+                    ['text' => 'Incorrect.', 'format' => FORMAT_HTML],
+                    ['text' => 'Incorrect.', 'format' => FORMAT_HTML],
+                ],
+            ]);
+        }
 
-    quiz_add_quiz_question($shortanswer->id, $quiz, 0, 1);
-    quiz_add_quiz_question($truefalse->id, $quiz, 1, 1);
-    quiz_add_quiz_question($multichoice->id, $quiz, 2, 2);
+        quiz_add_quiz_question($question->id, $quiz, $slot, 1.0);
+        $sumgrades += 1.0;
+        $slot++;
+    }
 
-    $quiz->sumgrades = 4;
+    $quiz->sumgrades = $sumgrades;
     $quiz->grade = 10;
     $DB->update_record('quiz', $quiz);
+
+    return $slot;
 }
 
 list($options, $unrecognised) = cli_get_params(
@@ -281,6 +188,7 @@ list($options, $unrecognised) = cli_get_params(
         'help' => false,
         'quiet' => false,
         'force' => false,
+        'students' => DEMO_STUDENT_COUNT,
     ],
     [
         'h' => 'help',
@@ -292,12 +200,14 @@ if (!empty($options['help'])) {
 Create development course with quiz, enrolled students and sample attempts.
 
 Options:
-  --force   Delete and recreate course if it already exists
-  --quiet   Suppress informational output
-  -h, --help  Print this help
+  --force      Delete and recreate course if it already exists
+  --students=N Number of demo students to enrol (default: 20)
+  --quiet      Suppress informational output
+  -h, --help   Print this help
 
 Example:
-  php mod/quiz/report/livequizmonitor/cli/setup_dev_data.php
+  php mod/quiz/report/livequizmonitor/cli/setup_dev_data.php --force
+  php mod/quiz/report/livequizmonitor/cli/simulate_quiz_demo.php
 
 EOF;
     exit(0);
@@ -305,6 +215,7 @@ EOF;
 
 $quiet = !empty($options['quiet']);
 $force = !empty($options['force']);
+$studentcount = max(1, (int) $options['students']);
 
 manager::set_user(get_admin());
 
@@ -314,18 +225,18 @@ $quizgenerator = $generator->get_plugin_generator('mod_quiz');
 
 global $DB;
 
-$existing = $DB->get_record('course', ['shortname' => COURSE_SHORTNAME], 'id', IGNORE_MISSING);
+$existing = $DB->get_record('course', ['shortname' => DEMO_COURSE_SHORTNAME], 'id', IGNORE_MISSING);
 if ($existing) {
     if (!$force) {
-        cli_error('Course ' . COURSE_SHORTNAME . ' already exists. Re-run with --force to recreate.');
+        cli_error('Course ' . DEMO_COURSE_SHORTNAME . ' already exists. Re-run with --force to recreate.');
     }
-    setup_log('Deleting existing course ' . COURSE_SHORTNAME . ' (id ' . $existing->id . ')', $quiet);
+    demo_log('Deleting existing course ' . DEMO_COURSE_SHORTNAME . ' (id ' . $existing->id . ')', $quiet);
     delete_course($existing->id, false);
 }
 
-setup_log('Creating course ' . COURSE_SHORTNAME, $quiet);
+demo_log('Creating course ' . DEMO_COURSE_SHORTNAME, $quiet);
 $course = $generator->create_course([
-    'shortname' => COURSE_SHORTNAME,
+    'shortname' => DEMO_COURSE_SHORTNAME,
     'fullname' => 'Quiz Monitor Development',
     'summary' => 'Development course for the live quiz monitor report plugin.',
     'format' => 'topics',
@@ -333,83 +244,33 @@ $course = $generator->create_course([
     'enablecompletion' => 0,
 ]);
 
-$studentusernames = ['adam', 'bert', 'colin', 'diane', 'emily', 'fred', 'gemma', 'hannah'];
+$studentusernames = demo_student_usernames($studentcount);
 $students = [];
 foreach ($studentusernames as $username) {
-    $students[$username] = setup_get_user($username);
+    $students[$username] = demo_get_user($username);
 }
-setup_log('Enrolling students: ' . implode(', ', $studentusernames), $quiet);
-setup_enrol_students($course->id, array_map(static fn(stdClass $u): int => (int) $u->id, $students), $quiet);
+demo_log('Enrolling ' . count($studentusernames) . ' students', $quiet);
+demo_enrol_students($course->id, array_map(static fn(stdClass $u): int => (int) $u->id, $students), $quiet);
 
-setup_log('Creating quiz with questions', $quiet);
+demo_log('Creating quiz with questions', $quiet);
 $quiz = $quizgenerator->create_instance([
     'course' => $course->id,
-    'name' => QUIZ_NAME,
+    'name' => DEMO_QUIZ_NAME,
     'intro' => 'Sample quiz for live monitoring report development.',
-    'sumgrades' => 4,
+    'sumgrades' => DEMO_QUESTION_COUNT,
     'grade' => 10,
     'preferredbehaviour' => 'deferredfeedback',
     'attempts' => 0,
-    'timelimit' => 0,
+    'timelimit' => DEMO_QUIZ_TIMELIMIT,
     'timeopen' => 0,
     'timeclose' => 0,
     'questionsperpage' => 1,
 ]);
 
 $cm = get_coursemodule_from_instance('quiz', $quiz->id, $course->id, false, MUST_EXIST);
-setup_add_demo_questions($quiz, context_module::instance($cm->id)->id);
+$questioncount = setup_add_demo_questions($quiz, context_module::instance($cm->id)->id);
 
 $quizid = (int) $quiz->id;
-$truestring = get_string('true', 'qtype_truefalse');
-$falsestring = get_string('false', 'qtype_truefalse');
-
-// Adam: finished attempt with correct answers.
-setup_log('Creating finished attempt for adam', $quiet);
-manager::set_user($students['adam']);
-$attempt = $quizgenerator->create_attempt($quizid, $students['adam']->id);
-setup_submit_responses($attempt->id, [
-    1 => 'frog',
-    2 => $truestring,
-    3 => 'One',
-], true);
-manager::set_user(get_admin());
-
-// Bert: in-progress attempt, first question answered only.
-setup_log('Creating in-progress attempt for bert', $quiet);
-manager::set_user($students['bert']);
-$attempt = $quizgenerator->create_attempt($quizid, $students['bert']->id);
-setup_submit_responses($attempt->id, [
-    1 => 'toad',
-], false);
-manager::set_user(get_admin());
-
-// Colin: attempt started, no answers yet.
-setup_log('Creating empty in-progress attempt for colin', $quiet);
-manager::set_user($students['colin']);
-$quizgenerator->create_attempt($quizid, $students['colin']->id);
-manager::set_user(get_admin());
-
-// Emily: finished attempt with mixed results.
-setup_log('Creating finished attempt for emily', $quiet);
-manager::set_user($students['emily']);
-$attempt = $quizgenerator->create_attempt($quizid, $students['emily']->id);
-setup_submit_responses($attempt->id, [
-    1 => 'wrong',
-    2 => $falsestring,
-    3 => 'Two',
-], true);
-manager::set_user(get_admin());
-
-// Fred: finished attempt.
-setup_log('Creating finished attempt for fred', $quiet);
-manager::set_user($students['fred']);
-$attempt = $quizgenerator->create_attempt($quizid, $students['fred']->id);
-setup_submit_responses($attempt->id, [
-    1 => 'frog',
-    2 => $truestring,
-    3 => 'Three',
-], true);
-manager::set_user(get_admin());
 
 $courseurl = (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false);
 $quizurl = (new moodle_url('/mod/quiz/view.php', ['id' => $cm->id]))->out(false);
@@ -421,12 +282,16 @@ $reporturl = (new moodle_url('/mod/quiz/report.php', [
 if (!$quiet) {
     echo PHP_EOL;
     mtrace('Development data ready.');
-    mtrace('Course:    ' . COURSE_SHORTNAME . ' (id ' . $course->id . ')');
-    mtrace('Quiz:      ' . QUIZ_NAME . ' (id ' . $quizid . ', cmid ' . $cm->id . ')');
-    mtrace('Students:  ' . count($studentusernames) . ' enrolled; attempts for adam, bert, colin, emily, fred');
+    mtrace('Course:    ' . DEMO_COURSE_SHORTNAME . ' (id ' . $course->id . ')');
+    mtrace('Quiz:      ' . DEMO_QUIZ_NAME . ' (id ' . $quizid . ', cmid ' . $cm->id . ', ' . $questioncount . ' questions, 5 min time limit)');
+    mtrace('Students:  ' . count($studentusernames) . ' enrolled (student01–student' . sprintf('%02d', $studentcount) . '), all not started');
+    mtrace('Password:  ' . DEMO_STUDENT_PASSWORD . ' for all demo students');
     mtrace('URLs:');
     mtrace('  ' . $courseurl);
     mtrace('  ' . $quizurl);
     mtrace('  ' . $reporturl);
+    mtrace('');
+    mtrace('Run the live demo simulator:');
+    mtrace('  php mod/quiz/report/livequizmonitor/cli/simulate_quiz_demo.php');
     echo PHP_EOL;
 }
