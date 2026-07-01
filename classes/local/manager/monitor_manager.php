@@ -246,15 +246,15 @@ class monitor_manager {
     /**
      * Compute progress bar fill percentage for a student row.
      *
+     * Fill is always based on answered ÷ total for active and completed attempts.
+     * Completion is conveyed separately via {@see get_status_presentation()} bar colour.
+     *
      * @param string $status Monitor status.
      * @param int $answered Questions answered.
      * @param int $total Total questions in quiz.
      * @return int Percentage 0–100.
      */
     public static function compute_progress_percent(string $status, int $answered, int $total): int {
-        if ($status === self::STATUS_COMPLETED) {
-            return 100;
-        }
         if ($status === self::STATUS_NOTSTARTED || $total <= 0) {
             return 0;
         }

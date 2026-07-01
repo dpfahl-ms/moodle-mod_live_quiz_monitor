@@ -84,6 +84,96 @@ final class monitor_manager_test extends advanced_testcase {
     }
 
     /**
+     * Submit a short-answer response on slot 1 and optionally finish the attempt.
+     *
+     * @param int $attemptid Attempt id.
+     * @param string $answer Response text.
+     * @param bool $finish Whether to finish the attempt after saving.
+     */
+    private function submit_shortanswer(int $attemptid, string $answer, bool $finish = false): void {
+        $attemptobj = quiz_attempt::create($attemptid);
+        $qa = $attemptobj->get_question_attempt(1);
+        $fieldname = $qa->get_qt_field_name('answer');
+        $attemptobj->process_submitted_actions(time(), false, [$fieldname => $answer]);
+        if ($finish) {
+            $attemptobj->process_finish(time(), false);
+        }
+    }
+
+    /**
+     * Completed status uses proportional fill, not a forced 100%.
+     */
+    public function test_compute_progress_percent_completed_proportional(): void {
+        $this->assertSame(0, monitor_manager::compute_progress_percent(
+            monitor_manager::STATUS_COMPLETED,
+            0,
+            10
+        ));
+        $this->assertSame(60, monitor_manager::compute_progress_percent(
+            monitor_manager::STATUS_COMPLETED,
+            6,
+            10
+        ));
+        $this->assertSame(100, monitor_manager::compute_progress_percent(
+            monitor_manager::STATUS_COMPLETED,
+            10,
+            10
+        ));
+    }
+
+    /**
+     * Finished attempt with no saved answers shows 0% progress.
+     */
+    public function test_get_state_completed_zero_answers_progress(): void {
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        [$quiz, $cm, $quizgenerator] = $this->create_quiz_with_question($course);
+
+        $user = $generator->create_user(['firstname' => 'Zero', 'lastname' => 'Submit']);
+        $generator->enrol_user($user->id, $course->id, 'student');
+
+        $this->create_quiz_attempt($quizgenerator, $quiz->id, $user->id, quiz_attempt::FINISHED);
+
+        $state = monitor_manager::get_state($course, $cm, $quiz, 0);
+        $this->assertCount(1, $state->students);
+        $row = $state->students[0];
+
+        $this->assertSame(monitor_manager::STATUS_COMPLETED, $row->status);
+        $this->assertSame(0, $row->progressanswered);
+        $this->assertSame(0, $row->progresspercent);
+        $this->assertStringContainsString('0 of 1 answered', $row->progresstext);
+    }
+
+    /**
+     * Finished attempt with all questions answered shows 100% progress.
+     */
+    public function test_get_state_completed_full_answers_progress(): void {
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        [$quiz, $cm, $quizgenerator] = $this->create_quiz_with_question($course);
+
+        $user = $generator->create_user(['firstname' => 'Full', 'lastname' => 'Submit']);
+        $generator->enrol_user($user->id, $course->id, 'student');
+
+        $this->setUser($user);
+        $attempt = $quizgenerator->create_attempt($quiz->id, $user->id);
+        $this->submit_shortanswer($attempt->id, 'frog', true);
+
+        $state = monitor_manager::get_state($course, $cm, $quiz, 0);
+        $this->assertCount(1, $state->students);
+        $row = $state->students[0];
+
+        $this->assertSame(monitor_manager::STATUS_COMPLETED, $row->status);
+        $this->assertSame(1, $row->progressanswered);
+        $this->assertSame(100, $row->progresspercent);
+        $this->assertStringContainsString('1 of 1 answered', $row->progresstext);
+    }
+
+    /**
      * Status mapping covers not started, in progress, and completed.
      */
     public function test_get_state_status_mapping(): void {
@@ -115,6 +205,9 @@ final class monitor_manager_test extends advanced_testcase {
         $this->assertContains('Bert Beta', $bystatus[monitor_manager::STATUS_INPROGRESS]);
         $this->assertContains('Diane Delta', $bystatus[monitor_manager::STATUS_NOTSTARTED]);
 
+        $completedrow = null;
+        $inprogressrow = null;
+
         foreach ($state->students as $row) {
             $presentation = monitor_manager::get_status_presentation($row->status);
             $this->assertSame($presentation['badgeclass'], $row->statusclass);
@@ -125,7 +218,19 @@ final class monitor_manager_test extends advanced_testcase {
                 $row->progresstotal
             );
             $this->assertSame($expectedpercent, $row->progresspercent);
+
+            if ($row->status === monitor_manager::STATUS_COMPLETED) {
+                $completedrow = $row;
+            } else if ($row->status === monitor_manager::STATUS_INPROGRESS) {
+                $inprogressrow = $row;
+            }
         }
+
+        $this->assertNotNull($completedrow);
+        $this->assertNotNull($inprogressrow);
+        $this->assertSame('bg-success', $completedrow->progressbarclass);
+        $this->assertSame('bg-warning', $inprogressrow->progressbarclass);
+        $this->assertSame($completedrow->progresspercent, $inprogressrow->progresspercent);
     }
 
     /**
@@ -223,9 +328,12 @@ final class monitor_manager_test extends advanced_testcase {
         }
 
         $this->assertSame(0, $byuserid[monitor_manager::STATUS_NOTSTARTED]->progresspercent);
-        $this->assertSame(100, $byuserid[monitor_manager::STATUS_COMPLETED]->progresspercent);
+        $this->assertSame('bg-secondary', $byuserid[monitor_manager::STATUS_NOTSTARTED]->progressbarclass);
+        $this->assertSame(0, $byuserid[monitor_manager::STATUS_COMPLETED]->progresspercent);
+        $this->assertSame('bg-success', $byuserid[monitor_manager::STATUS_COMPLETED]->progressbarclass);
         $this->assertGreaterThanOrEqual(0, $byuserid[monitor_manager::STATUS_INPROGRESS]->progresspercent);
         $this->assertLessThanOrEqual(100, $byuserid[monitor_manager::STATUS_INPROGRESS]->progresspercent);
+        $this->assertSame('bg-warning', $byuserid[monitor_manager::STATUS_INPROGRESS]->progressbarclass);
     }
 
     /**
