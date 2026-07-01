@@ -49,7 +49,14 @@
                 </td>
                 {{#showactionscolumn}}
                 <td class="livequizmonitor-actions" data-field="actions">
-                    {{> quiz_livequizmonitor/row_action_menu }}
+                    <div class="livequizmonitor-actions-inner">
+                        {{> quiz_livequizmonitor/row_action_menu }}
+                        {{#isblocked}}
+                        <i class="fa-solid fa-flag livequizmonitor-blocked-flag"
+                           title="{{blockedflaglabel}}"
+                           aria-hidden="true"></i>
+                        {{/isblocked}}
+                    </div>
                 </td>
                 {{/showactionscolumn}}
             </tr>

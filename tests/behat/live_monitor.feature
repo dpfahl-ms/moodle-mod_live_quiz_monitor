@@ -109,3 +109,67 @@ Feature: Live quiz monitor report
     Then I should see "Edit note" "link"
     When I click on "Edit note" "link"
     Then the field "Note for Sam Student" should have the value "Requested bathroom break"
+
+  @javascript @onesession
+  Scenario: B1 - No unblock UI when onesession is off
+    When I am on the "Quiz 1" "quiz activity" page
+    And I navigate to "Reports" in current page administration
+    And I follow "Live Monitor"
+    And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
+    Then I should not see "Unblock user" "link"
+
+  @javascript @onesession
+  Scenario: B2 - Unblock menu visible but disabled on non-blocked row
+    Given onesession concurrent session rule is enabled for quiz "Quiz 1"
+    And I am on the "Quiz 1" "quiz activity" page logged in as "student1"
+    And I press "Attempt quiz now"
+    And I log in as "teacher1"
+    When I am on the "Quiz 1" "quiz activity" page
+    And I navigate to "Reports" in current page administration
+    And I follow "Live Monitor"
+    And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
+    Then I should see "Unblock user" "link"
+    And ".livequizmonitor-row-actions [data-action='unblock-student'].disabled" "css_element" should exist
+
+  @javascript @onesession
+  Scenario: B3 - Red flag and enabled unblock after block event
+    Given onesession concurrent session rule is enabled for quiz "Quiz 1"
+    And I am on the "Quiz 1" "quiz activity" page logged in as "student1"
+    And I press "Attempt quiz now"
+    And the student "student1" is blocked by onesession on quiz "Quiz 1"
+    And I log in as "teacher1"
+    When I am on the "Quiz 1" "quiz activity" page
+    And I navigate to "Reports" in current page administration
+    And I follow "Live Monitor"
+    Then ".livequizmonitor-blocked-flag" "css_element" should exist
+
+  @javascript @onesession
+  Scenario: B4 - Unblock confirmation modal opens
+    Given onesession concurrent session rule is enabled for quiz "Quiz 1"
+    And I am on the "Quiz 1" "quiz activity" page logged in as "student1"
+    And I press "Attempt quiz now"
+    And the student "student1" is blocked by onesession on quiz "Quiz 1"
+    And I log in as "teacher1"
+    When I am on the "Quiz 1" "quiz activity" page
+    And I navigate to "Reports" in current page administration
+    And I follow "Live Monitor"
+    And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
+    And I click on "Unblock user" "link"
+    Then I should see "Unblock Sam Student"
+    And I should see "Allow this student to continue the quiz attempt on another device or browser."
+
+  @javascript @onesession
+  Scenario: B5 - Post-confirm flag gone and unblock disabled
+    Given onesession concurrent session rule is enabled for quiz "Quiz 1"
+    And I am on the "Quiz 1" "quiz activity" page logged in as "student1"
+    And I press "Attempt quiz now"
+    And the student "student1" is blocked by onesession on quiz "Quiz 1"
+    And I log in as "teacher1"
+    When I am on the "Quiz 1" "quiz activity" page
+    And I navigate to "Reports" in current page administration
+    And I follow "Live Monitor"
+    And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
+    And I click on "Unblock user" "link"
+    And I click on "Unblock" "button"
+    Then ".livequizmonitor-blocked-flag" "css_element" should not exist
+    And ".livequizmonitor-row-actions [data-action='unblock-student'].disabled" "css_element" should exist

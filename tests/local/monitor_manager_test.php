@@ -325,4 +325,125 @@ final class monitor_manager_test extends advanced_testcase {
         $this->assertObjectHasProperty('searchtext', $state->students[0]);
         $this->assertStringContainsString('search target', $state->students[0]->searchtext);
     }
+
+    /**
+     * Onesession fields are inactive when rule is not enabled.
+     */
+    public function test_onesession_inactive_when_rule_disabled(): void {
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        [$quiz, $cm, $quizgenerator] = $this->create_quiz_with_question($course);
+
+        $teacher = $generator->create_user();
+        $student = $generator->create_user();
+        $generator->enrol_user($teacher->id, $course->id, 'editingteacher');
+        $generator->enrol_user($student->id, $course->id, 'student');
+
+        $this->setUser($student);
+        $quizgenerator->create_attempt($quiz->id, $student->id);
+
+        $this->setUser($teacher);
+        $state = monitor_manager::get_state($course, $cm, $quiz, 0);
+
+        $this->assertFalse($state->onesessionactive);
+        $this->assertFalse($state->canunblock);
+        foreach ($state->students as $row) {
+            $this->assertFalse($row->isblocked);
+            $this->assertFalse($row->unblockactionenabled);
+        }
+    }
+
+    /**
+     * Insert a onesession log event for an attempt.
+     *
+     * @param string $eventname Event class name.
+     * @param \stdClass $attempt Attempt record.
+     * @param \stdClass $cm Course module.
+     * @param int $actorid User id stored on the log row.
+     * @param int|null $timecreated Optional log timestamp.
+     */
+    private function insert_onesession_log_event(
+        string $eventname,
+        \stdClass $attempt,
+        \stdClass $cm,
+        int $actorid,
+        ?int $timecreated = null
+    ): void {
+        global $DB;
+
+        $context = \context_module::instance($cm->id);
+        $DB->insert_record('logstore_standard_log', (object) [
+            'eventname' => $eventname,
+            'component' => 'quizaccess_onesession',
+            'action' => 'blocked',
+            'target' => 'attempt',
+            'objecttable' => 'quiz_attempts',
+            'objectid' => $attempt->id,
+            'crud' => 'r',
+            'edulevel' => 2,
+            'contextid' => $context->id,
+            'contextlevel' => CONTEXT_MODULE,
+            'contextinstanceid' => $cm->id,
+            'userid' => $actorid,
+            'courseid' => $cm->course,
+            'timecreated' => $timecreated ?? time(),
+        ]);
+    }
+
+    /**
+     * isblocked is true when attempt_blocked event exists for in-progress attempt.
+     */
+    public function test_isblocked_when_onesession_event_seeded(): void {
+        $this->resetAfterTest();
+
+        if (!onesession_manager::is_plugin_installed()) {
+            $this->markTestSkipped('quizaccess_onesession is not installed');
+        }
+
+        global $DB;
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        [$quiz, $cm, $quizgenerator] = $this->create_quiz_with_question($course);
+
+        $teacher = $generator->create_user();
+        $student = $generator->create_user();
+        $generator->enrol_user($teacher->id, $course->id, 'editingteacher');
+        $generator->enrol_user($student->id, $course->id, 'student');
+
+        $record = $DB->get_record('quizaccess_onesession', ['quizid' => $quiz->id]);
+        if ($record) {
+            $record->enabled = 1;
+            $DB->update_record('quizaccess_onesession', $record);
+        } else {
+            $DB->insert_record('quizaccess_onesession', (object) [
+                'quizid' => $quiz->id,
+                'enabled' => 1,
+            ]);
+        }
+
+        $this->setUser($student);
+        $attempt = $quizgenerator->create_attempt($quiz->id, $student->id);
+
+        $this->insert_onesession_log_event(onesession_manager::EVENT_ATTEMPT_BLOCKED, $attempt, $cm, $student->id);
+
+        $this->setUser($teacher);
+        $state = monitor_manager::get_state($course, $cm, $quiz, 0);
+
+        $this->assertTrue($state->onesessionactive);
+        $this->assertTrue($state->canunblock);
+
+        $blockedrow = null;
+        foreach ($state->students as $row) {
+            if ((int) $row->userid === (int) $student->id) {
+                $blockedrow = $row;
+                break;
+            }
+        }
+        $this->assertNotNull($blockedrow);
+        $this->assertTrue($blockedrow->isblocked);
+        $this->assertTrue($blockedrow->unblockactionenabled);
+    }
 }

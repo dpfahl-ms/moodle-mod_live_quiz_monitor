@@ -180,3 +180,17 @@
     min-height: 8rem;
     resize: vertical;
 }
+
+.livequizmonitor-actions-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.livequizmonitor-blocked-flag {
+    color: rgb(255, 59, 59);
+}
+
+.livequizmonitor-row-actions .dropdown-item .fa-unlock {
+    margin-right: 0.5rem;
+}

@@ -24,8 +24,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2025040110;
+$plugin->version   = 2025040111;
 $plugin->requires  = 2024100700;
 $plugin->component = 'quiz_livequizmonitor';
 $plugin->maturity  = MATURITY_ALPHA;
-$plugin->release   = 'v0.1.2';
+$plugin->release   = 'v0.1.3';

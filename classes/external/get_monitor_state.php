@@ -124,6 +124,8 @@ class get_monitor_state extends external_api {
             'attemptendat' => new external_value(PARAM_INT, 'Attempt deadline timestamp', VALUE_OPTIONAL),
             'canextend' => new external_value(PARAM_BOOL, 'Viewer may extend time'),
             'hasnote' => new external_value(PARAM_BOOL, 'Student has a saved note'),
+            'isblocked' => new external_value(PARAM_BOOL, 'Student blocked by onesession'),
+            'unblockactionenabled' => new external_value(PARAM_BOOL, 'Unblock action enabled for viewer'),
         ]);
 
         return new external_single_structure([
@@ -135,6 +137,8 @@ class get_monitor_state extends external_api {
             'hasstudents' => new external_value(PARAM_BOOL, 'Has students'),
             'canextend' => new external_value(PARAM_BOOL, 'Viewer may extend time'),
             'inprogresscount' => new external_value(PARAM_INT, 'In-progress student count'),
+            'onesessionactive' => new external_value(PARAM_BOOL, 'Onesession rule active for quiz'),
+            'canunblock' => new external_value(PARAM_BOOL, 'Viewer may unblock attempts'),
             'summary' => new external_single_structure([
                 'notstarted' => $statuscount,
                 'inprogress' => $statuscount,
@@ -171,6 +175,8 @@ class get_monitor_state extends external_api {
                 'searchtext' => $row->searchtext,
                 'canextend' => (bool) $row->canextend,
                 'hasnote' => (bool) ($row->hasnote ?? false),
+                'isblocked' => (bool) ($row->isblocked ?? false),
+                'unblockactionenabled' => (bool) ($row->unblockactionenabled ?? false),
             ];
             if ($row->attemptid !== null) {
                 $entry['attemptid'] = $row->attemptid;
@@ -194,6 +200,8 @@ class get_monitor_state extends external_api {
             'hasstudents' => (bool) $state->hasstudents,
             'canextend' => (bool) ($state->canextend ?? false),
             'inprogresscount' => (int) ($state->inprogresscount ?? $summary->inprogress->count),
+            'onesessionactive' => (bool) ($state->onesessionactive ?? false),
+            'canunblock' => (bool) ($state->canunblock ?? false),
             'summary' => [
                 'notstarted' => (array) $summary->notstarted,
                 'inprogress' => (array) $summary->inprogress,

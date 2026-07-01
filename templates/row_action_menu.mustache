@@ -32,5 +32,18 @@
             <span class="menu-action-text">{{extendrowlabel}}</span>
         </a>
         {{/canextend}}
+        {{#onesessionactive}}
+        <a href="#"
+           class="dropdown-item menu-action{{^unblockactionenabled}} disabled{{/unblockactionenabled}}"
+           role="menuitem"
+           data-action="unblock-student"
+           data-userid="{{userid}}"
+           data-studentname="{{fullname}}"
+           data-attemptid="{{attemptid}}"
+           {{^unblockactionenabled}}aria-disabled="true" tabindex="-1"{{/unblockactionenabled}}>
+            <i class="fa-solid fa-unlock" aria-hidden="true"></i>
+            <span class="menu-action-text">{{unblocklabel}}</span>
+        </a>
+        {{/onesessionactive}}
     </div>
 </div>

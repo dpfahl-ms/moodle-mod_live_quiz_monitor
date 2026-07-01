@@ -27,6 +27,7 @@ import {matchesFilters, countVisible} from 'quiz_livequizmonitor/filter_utils';
 import {createMonitorReactive, formatDuration} from 'quiz_livequizmonitor/reactive/monitor_state';
 import {showExtendModal} from 'quiz_livequizmonitor/extend_time_modal';
 import {showStudentNoteModal} from 'quiz_livequizmonitor/student_note_modal';
+import {showUnblockModal} from 'quiz_livequizmonitor/unblock_confirm_modal';
 
 /**
  * Reactive component that syncs monitor state to the page DOM.
@@ -69,6 +70,10 @@ class MonitorComponent extends BaseComponent {
         this.noteEditLabel = root.dataset.notesEditLabel ?? 'Edit note';
         this.actionsMenuLabel = root.dataset.actionsMenuLabel ?? 'Actions';
         this.canextend = root.dataset.canextend === '1';
+        this.onesessionactive = root.dataset.onesessionActive === '1';
+        this.canunblock = root.dataset.canunblock === '1';
+        this.unblockRowLabel = root.dataset.unblockLabel ?? 'Unblock user';
+        this.blockedFlagLabel = root.dataset.blockedFlagLabel ?? 'Blocked';
     }
 
     /**
@@ -104,6 +109,10 @@ class MonitorComponent extends BaseComponent {
             {watch: 'students.canextend:updated', handler: this.renderStudents},
             {watch: 'students.attemptendat:updated', handler: this.renderStudents},
             {watch: 'students.hasnote:updated', handler: this.renderStudents},
+            {watch: 'students.isblocked:updated', handler: this.renderStudents},
+            {watch: 'students.unblockactionenabled:updated', handler: this.renderStudents},
+            {watch: 'meta.onesessionactive:updated', handler: this.renderStudents},
+            {watch: 'meta.canunblock:updated', handler: this.renderStudents},
             {watch: 'summary.notstarted:updated', handler: this.renderFilterToolbar},
             {watch: 'summary.inprogress:updated', handler: this.renderFilterToolbar},
             {watch: 'summary.inprogress:updated', handler: this.renderBulkExtendButton},
@@ -171,6 +180,17 @@ class MonitorComponent extends BaseComponent {
                 return;
             }
             this.openIndividualExtendModal(individualLink);
+            return;
+        }
+
+        const unblockLink = event.target.closest('[data-action="unblock-student"]');
+        if (unblockLink && this.element.contains(unblockLink)) {
+            event.preventDefault();
+            if (unblockLink.classList.contains('disabled')
+                || unblockLink.getAttribute('aria-disabled') === 'true') {
+                return;
+            }
+            this.openUnblockModal(unblockLink);
         }
     }
 
@@ -236,6 +256,58 @@ class MonitorComponent extends BaseComponent {
         });
         if (response) {
             this.poll();
+        }
+    }
+
+    /**
+     * Open unblock confirmation modal and refresh row on success.
+     *
+     * @param {HTMLElement} trigger Action menu link element
+     */
+    async openUnblockModal(trigger) {
+        const userid = parseInt(trigger.dataset.userid, 10);
+        const attemptid = parseInt(trigger.dataset.attemptid, 10);
+        const response = await showUnblockModal({
+            cmid: this.cmid,
+            userid,
+            attemptid,
+            studentname: trigger.dataset.studentname ?? '',
+        });
+
+        if (!response) {
+            return;
+        }
+
+        this.updateRowUnblockState(userid);
+        this.poll();
+    }
+
+    /**
+     * Remove blocked flag and disable unblock menu item immediately after success.
+     *
+     * @param {number} userid Student user id
+     */
+    updateRowUnblockState(userid) {
+        const row = this.element.querySelector(`tr[data-userid="${userid}"]`);
+        if (!row) {
+            return;
+        }
+
+        const flag = row.querySelector('.livequizmonitor-blocked-flag');
+        if (flag) {
+            flag.remove();
+        }
+
+        const unblockLink = row.querySelector('[data-action="unblock-student"]');
+        if (unblockLink) {
+            this.updateUnblockActionLink(unblockLink, {unblockactionenabled: false});
+        }
+
+        const students = this.getState()?.students;
+        if (students instanceof Map && students.has(userid)) {
+            const student = students.get(userid);
+            student.isblocked = false;
+            student.unblockactionenabled = false;
         }
     }
 
@@ -391,6 +463,12 @@ class MonitorComponent extends BaseComponent {
                     groupid: this.groupid,
                 },
             }])[0];
+            if (response.onesessionactive !== undefined) {
+                this.onesessionactive = !!response.onesessionactive;
+            }
+            if (response.canunblock !== undefined) {
+                this.canunblock = !!response.canunblock;
+            }
             this.reactive.dispatch('refreshState', response);
         } catch (e) {
             this.reactive.dispatch('setStale', true);
@@ -575,15 +653,23 @@ class MonitorComponent extends BaseComponent {
     buildRowActionMenuHtml(student) {
         const userid = student.userid ?? student.id;
         const attemptendat = student.attemptendat ?? '';
+        const attemptid = student.attemptid ?? '';
         const fullname = this.escapeHtml(student.fullname ?? '');
         const extendlabel = this.escapeHtml(this.extendRowLabel);
         const actionslabel = this.escapeHtml(this.actionsMenuLabel);
+        const unblocklabel = this.escapeHtml(this.unblockRowLabel);
+        const blockedflaglabel = this.escapeHtml(this.blockedFlagLabel);
         const notelabel = this.escapeHtml(student.hasnote ? this.noteEditLabel : this.noteAddLabel);
         const hasnote = student.hasnote ? '1' : '0';
         const showextend = !!(student.canextend ?? this.canextend);
         const extendenabled = showextend && this.isExtendActionEnabled(student);
         const extenddisabledClass = extendenabled ? '' : ' disabled';
         const extenddisabledAttrs = extendenabled ? '' : ' aria-disabled="true" tabindex="-1"';
+        const onesessionactive = !!(student.onesessionactive ?? this.onesessionactive);
+        const unblockenabled = !!(student.unblockactionenabled);
+        const unblockdisabledClass = unblockenabled ? '' : ' disabled';
+        const unblockdisabledAttrs = unblockenabled ? '' : ' aria-disabled="true" tabindex="-1"';
+        const isblocked = !!(student.isblocked);
 
         const extendItem = showextend ? `
                     <a href="#"
@@ -597,29 +683,47 @@ class MonitorComponent extends BaseComponent {
                         <span class="menu-action-text">${extendlabel}</span>
                     </a>` : '';
 
-        return `
-            <div class="dropdown livequizmonitor-row-actions" data-region="row-actions">
-                <button type="button"
-                        class="btn btn-icon dropdown-toggle no-caret d-flex align-items-center justify-content-center"
-                        data-toggle="dropdown"
-                        aria-haspopup="true"
-                        aria-expanded="false"
-                        title="${actionslabel}">
-                    <i class="icon fa fa-ellipsis-vertical fa-fw" aria-hidden="true"></i>
-                    <span class="sr-only">${actionslabel}</span>
-                </button>
-                <div class="dropdown-menu dropdown-menu-right">
+        const unblockItem = onesessionactive ? `
                     <a href="#"
-                       class="dropdown-item menu-action"
+                       class="dropdown-item menu-action${unblockdisabledClass}"
                        role="menuitem"
-                       data-action="edit-note"
+                       data-action="unblock-student"
                        data-userid="${userid}"
                        data-studentname="${fullname}"
-                       data-hasnote="${hasnote}">
-                        <i class="fa-solid fa-book" aria-hidden="true"></i>
-                        <span class="menu-action-text">${notelabel}</span>
-                    </a>${extendItem}
-                </div>
+                       data-attemptid="${attemptid}"${unblockdisabledAttrs}>
+                        <i class="fa-solid fa-unlock" aria-hidden="true"></i>
+                        <span class="menu-action-text">${unblocklabel}</span>
+                    </a>` : '';
+
+        const flagHtml = isblocked
+            ? `<i class="fa-solid fa-flag livequizmonitor-blocked-flag" title="${blockedflaglabel}" aria-hidden="true"></i>`
+            : '';
+
+        return `
+            <div class="livequizmonitor-actions-inner">
+                <div class="dropdown livequizmonitor-row-actions" data-region="row-actions">
+                    <button type="button"
+                            class="btn btn-icon dropdown-toggle no-caret d-flex align-items-center justify-content-center"
+                            data-toggle="dropdown"
+                            aria-haspopup="true"
+                            aria-expanded="false"
+                            title="${actionslabel}">
+                        <i class="icon fa fa-ellipsis-vertical fa-fw" aria-hidden="true"></i>
+                        <span class="sr-only">${actionslabel}</span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-right">
+                        <a href="#"
+                           class="dropdown-item menu-action"
+                           role="menuitem"
+                           data-action="edit-note"
+                           data-userid="${userid}"
+                           data-studentname="${fullname}"
+                           data-hasnote="${hasnote}">
+                            <i class="fa-solid fa-book" aria-hidden="true"></i>
+                            <span class="menu-action-text">${notelabel}</span>
+                        </a>${extendItem}${unblockItem}
+                    </div>
+                </div>${flagHtml}
             </div>
         `;
     }
@@ -661,6 +765,51 @@ class MonitorComponent extends BaseComponent {
     }
 
     /**
+     * Sync disabled state on the unblock menu item.
+     *
+     * @param {HTMLElement} link Unblock action menu item
+     * @param {object} student Student state row
+     */
+    updateUnblockActionLink(link, student) {
+        const enabled = !!(student.unblockactionenabled);
+        link.dataset.userid = String(student.userid ?? student.id);
+        link.dataset.studentname = student.fullname ?? '';
+        link.dataset.attemptid = student.attemptid ?? '';
+        link.classList.toggle('disabled', !enabled);
+        if (enabled) {
+            link.removeAttribute('aria-disabled');
+            link.removeAttribute('tabindex');
+        } else {
+            link.setAttribute('aria-disabled', 'true');
+            link.setAttribute('tabindex', '-1');
+        }
+    }
+
+    /**
+     * Show or hide the blocked flag beside the row action menu.
+     *
+     * @param {HTMLElement} row Table row element
+     * @param {object} student Student state row
+     */
+    updateBlockedFlag(row, student) {
+        const inner = row.querySelector('.livequizmonitor-actions-inner');
+        if (!inner) {
+            return;
+        }
+
+        let flag = inner.querySelector('.livequizmonitor-blocked-flag');
+        if (student.isblocked) {
+            if (!flag) {
+                inner.insertAdjacentHTML('beforeend',
+                    `<i class="fa-solid fa-flag livequizmonitor-blocked-flag" title="${this.escapeHtml(this.blockedFlagLabel)}" aria-hidden="true"></i>`
+                );
+            }
+        } else if (flag) {
+            flag.remove();
+        }
+    }
+
+    /**
      * Keep the row action menu visible and refresh extend item state.
      *
      * @param {object} student Student state row
@@ -672,21 +821,74 @@ class MonitorComponent extends BaseComponent {
             return;
         }
 
-        let menu = cell.querySelector('[data-region="row-actions"]');
-        if (!menu) {
-            cell.insertAdjacentHTML('beforeend', this.buildRowActionMenuHtml(student));
+        const onesessionactive = !!(student.onesessionactive ?? this.onesessionactive);
+        let inner = cell.querySelector('.livequizmonitor-actions-inner');
+        if (!inner) {
+            cell.innerHTML = this.buildRowActionMenuHtml(student);
             return;
         }
 
-        const link = menu.querySelector('[data-action="extend-individual"]');
+        if (!onesessionactive) {
+            const unblockLink = inner.querySelector('[data-action="unblock-student"]');
+            if (unblockLink) {
+                unblockLink.remove();
+            }
+            const flag = inner.querySelector('.livequizmonitor-blocked-flag');
+            if (flag) {
+                flag.remove();
+            }
+        } else {
+            let unblockLink = inner.querySelector('[data-action="unblock-student"]');
+            if (!unblockLink) {
+                const menu = inner.querySelector('.dropdown-menu');
+                if (menu) {
+                    menu.insertAdjacentHTML('beforeend', this.buildUnblockMenuItemHtml(student));
+                    unblockLink = inner.querySelector('[data-action="unblock-student"]');
+                }
+            }
+            if (unblockLink) {
+                this.updateUnblockActionLink(unblockLink, student);
+            }
+            this.updateBlockedFlag(row, student);
+        }
+
+        const link = inner.querySelector('[data-action="extend-individual"]');
         if (link) {
             this.updateExtendActionLink(link, student);
         }
 
-        const notelink = menu.querySelector('[data-action="edit-note"]');
+        const notelink = inner.querySelector('[data-action="edit-note"]');
         if (notelink) {
             this.updateNoteActionLink(notelink, student);
         }
+    }
+
+    /**
+     * Build only the unblock dropdown item markup.
+     *
+     * @param {object} student Student state row
+     * @returns {string}
+     */
+    buildUnblockMenuItemHtml(student) {
+        const userid = student.userid ?? student.id;
+        const fullname = this.escapeHtml(student.fullname ?? '');
+        const attemptid = student.attemptid ?? '';
+        const unblocklabel = this.escapeHtml(this.unblockRowLabel);
+        const enabled = !!(student.unblockactionenabled);
+        const disabledClass = enabled ? '' : ' disabled';
+        const disabledAttrs = enabled ? '' : ' aria-disabled="true" tabindex="-1"';
+
+        return `
+                    <a href="#"
+                       class="dropdown-item menu-action${disabledClass}"
+                       role="menuitem"
+                       data-action="unblock-student"
+                       data-userid="${userid}"
+                       data-studentname="${fullname}"
+                       data-attemptid="${attemptid}"${disabledAttrs}>
+                        <i class="fa-solid fa-unlock" aria-hidden="true"></i>
+                        <span class="menu-action-text">${unblocklabel}</span>
+                    </a>`;
     }
 
     /**

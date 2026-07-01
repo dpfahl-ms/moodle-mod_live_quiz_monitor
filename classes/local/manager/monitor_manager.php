@@ -119,6 +119,25 @@ class monitor_manager {
             $row->hasnote = !empty($hasnotemap[$row->userid]);
         }
 
+        $onesessionactive = onesession_manager::is_active_for_quiz((int) $quiz->id, $quiz);
+        $canunblock = $onesessionactive && onesession_manager::user_can_unblock($context);
+
+        $attemptids = [];
+        foreach ($rows as $row) {
+            if ($row->status === self::STATUS_INPROGRESS && $row->attemptid !== null) {
+                $attemptids[] = (int) $row->attemptid;
+            }
+        }
+        $blockedmap = $onesessionactive ? onesession_manager::get_blocked_map($attemptids) : [];
+        foreach ($rows as $row) {
+            $row->isblocked = false;
+            $row->unblockactionenabled = false;
+            if ($onesessionactive && $row->attemptid !== null && !empty($blockedmap[(int) $row->attemptid])) {
+                $row->isblocked = true;
+                $row->unblockactionenabled = $canunblock;
+            }
+        }
+
         $summary = self::build_summary($rows, count($students));
 
         $canextend = extend_time_manager::user_can_extend($context);
@@ -135,6 +154,8 @@ class monitor_manager {
             'hasstudents' => count($students) > 0,
             'canextend' => $canextend,
             'inprogresscount' => $inprogresscount,
+            'onesessionactive' => $onesessionactive,
+            'canunblock' => $canunblock,
         ];
 
         return $state;
@@ -345,6 +366,8 @@ class monitor_manager {
             'attemptendat' => $attemptendat,
             'canextend' => $canextend,
             'hasnote' => false,
+            'isblocked' => false,
+            'unblockactionenabled' => false,
         ];
     }
 

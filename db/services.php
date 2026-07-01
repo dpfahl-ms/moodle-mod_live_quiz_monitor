@@ -65,4 +65,14 @@ $functions = [
         'loginrequired' => true,
         'capabilities' => 'quiz/livequizmonitor:view',
     ],
+    'quiz_livequizmonitor_unblock_student' => [
+        'classname' => 'quiz_livequizmonitor\\external\\unblock_student',
+        'methodname' => 'execute',
+        'classpath' => '',
+        'description' => 'Unblocks a student quiz attempt locked by onesession.',
+        'type' => 'write',
+        'ajax' => true,
+        'loginrequired' => true,
+        'capabilities' => 'quiz/livequizmonitor:view',
+    ],
 ];

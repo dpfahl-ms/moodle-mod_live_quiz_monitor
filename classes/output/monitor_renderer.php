@@ -47,15 +47,22 @@ class monitor_renderer extends plugin_renderer_base {
         $updated = userdate($state->updatedat, get_string('strftimetime', 'langconfig'));
         $canextend = !empty($state->canextend);
         $inprogresscount = (int) ($state->inprogresscount ?? $state->summary->inprogress->count);
+        $onesessionactive = !empty($state->onesessionactive);
+        $canunblock = !empty($state->canunblock);
 
         $students = [];
         foreach ($state->students as $row) {
             $student = (array) $row;
             $student['extendactionenabled'] = $canextend && $row->status === monitor_manager::STATUS_INPROGRESS;
             $student['canextend'] = $canextend;
+            $student['onesessionactive'] = $onesessionactive;
+            $student['canunblock'] = $canunblock;
             $student['notelabel'] = !empty($row->hasnote)
                 ? get_string('notes:editlabel', 'quiz_livequizmonitor')
                 : get_string('notes:addlabel', 'quiz_livequizmonitor');
+            $student['extendrowlabel'] = get_string('extend:rowaction', 'quiz_livequizmonitor');
+            $student['unblocklabel'] = get_string('onesession:unblocklabel', 'quiz_livequizmonitor');
+            $student['blockedflaglabel'] = get_string('onesession:blockedflag', 'quiz_livequizmonitor');
             $students[] = $student;
         }
 
@@ -75,12 +82,16 @@ class monitor_renderer extends plugin_renderer_base {
             'summary' => (array) $state->summary,
             'students' => $students,
             'canextend' => $canextend,
+            'onesessionactive' => $onesessionactive,
+            'canunblock' => $canunblock,
             'inprogresscount' => $inprogresscount,
             'bulkextenddisabled' => $inprogresscount === 0,
             'bulkextendlabel' => get_string('extend:bulklabel', 'quiz_livequizmonitor'),
             'extendrowlabel' => get_string('extend:rowaction', 'quiz_livequizmonitor'),
             'notesaddlabel' => get_string('notes:addlabel', 'quiz_livequizmonitor'),
             'noteseditlabel' => get_string('notes:editlabel', 'quiz_livequizmonitor'),
+            'unblocklabel' => get_string('onesession:unblocklabel', 'quiz_livequizmonitor'),
+            'blockedflaglabel' => get_string('onesession:blockedflag', 'quiz_livequizmonitor'),
             'actionsmenulabel' => get_string('actions'),
             'tableheaders' => [
                 'status' => get_string('table:status', 'quiz_livequizmonitor'),
