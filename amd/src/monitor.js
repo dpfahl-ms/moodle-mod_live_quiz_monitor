@@ -22,6 +22,7 @@
  */
 
 import Ajax from 'core/ajax';
+import Notification from 'core/notification';
 import Templates from 'core/templates';
 import {BaseComponent} from 'core/reactive';
 import {matchesFilters, countVisible} from 'quiz_livequizmonitor/filter_utils';
@@ -485,6 +486,7 @@ class MonitorComponent extends BaseComponent {
             this.renderCohortLayout();
             await this.syncStudentTable();
         } catch (e) {
+            Notification.exception(e);
             this.reactive.dispatch('setStale', true);
         } finally {
             this.pollInFlight = false;

@@ -170,11 +170,6 @@ class student_note_manager {
      * @return bool
      */
     public static function is_user_in_cohort(int $userid, context_module $context, int $groupid, cm_info|stdClass $cm): bool {
-        if ($groupid <= 0) {
-            $groupid = groups_get_activity_group($cm, true) ?: 0;
-        }
-
-        $students = get_enrolled_users($context, 'mod/quiz:attempt', $groupid, 'u.id');
-        return isset($students[$userid]);
+        return supervision_scope_manager::is_user_in_cohort($userid, $context, $groupid, $cm);
     }
 }

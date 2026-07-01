@@ -34,5 +34,6 @@ $capabilities = [
             'manager' => CAP_ALLOW,
         ],
         'clonepermissionsfrom' => 'mod/quiz:viewreports',
+        'riskbitmask' => RISK_PERSONAL,
     ],
 ];

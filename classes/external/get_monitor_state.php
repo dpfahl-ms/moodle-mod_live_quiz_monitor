@@ -35,6 +35,7 @@ use external_single_structure;
 use external_value;
 use external_multiple_structure;
 use quiz_livequizmonitor\local\manager\monitor_manager;
+use quiz_livequizmonitor\local\manager\supervision_scope_manager;
 
 /**
  * Returns monitor state for AJAX polling.
@@ -75,6 +76,8 @@ class get_monitor_state extends external_api {
 
         self::validate_context($context);
         require_capability('quiz/livequizmonitor:view', $context);
+
+        supervision_scope_manager::validate_group_access((int) $params['groupid'], $cm);
 
         $state = monitor_manager::get_state($course, $cm, $quiz, (int) $params['groupid']);
 

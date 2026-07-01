@@ -24,8 +24,12 @@
 
 namespace quiz_livequizmonitor\external;
 
+require_once(__DIR__ . '/../traits/group_scope_test_trait.php');
+
 use advanced_testcase;
+use moodle_exception;
 use quiz_livequizmonitor\external\get_monitor_state;
+use quiz_livequizmonitor\tests\traits\group_scope_test_trait;
 use required_capability_exception;
 
 /**
@@ -35,6 +39,7 @@ use required_capability_exception;
  * @runTestsInSeparateProcesses
  */
 final class get_monitor_state_test extends advanced_testcase {
+    use group_scope_test_trait;
 
     /**
      * Teacher with capability receives valid payload shape.
@@ -134,5 +139,23 @@ final class get_monitor_state_test extends advanced_testcase {
 
         $this->expectException(required_capability_exception::class);
         get_monitor_state::execute($cm->id, 0);
+    }
+
+    /**
+     * Teacher restricted to Group A cannot poll monitor state for Group B.
+     */
+    public function test_execute_rejects_out_of_scope_group(): void {
+        $this->resetAfterTest();
+
+        $fixture = $this->create_separate_groups_fixture();
+        $this->setUser($fixture['teacher']);
+
+        $this->expectException(moodle_exception::class);
+        try {
+            get_monitor_state::execute($fixture['cm']->id, (int) $fixture['groupb']->id);
+        } catch (moodle_exception $e) {
+            $this->assertSame('error:groupnotvisible', $e->errorcode);
+            throw $e;
+        }
     }
 }

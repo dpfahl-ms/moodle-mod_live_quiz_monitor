@@ -35,7 +35,9 @@ use external_multiple_structure;
 use external_single_structure;
 use external_value;
 use invalid_parameter_exception;
+use moodle_exception;
 use quiz_livequizmonitor\local\manager\extend_time_manager;
+use quiz_livequizmonitor\local\manager\supervision_scope_manager;
 
 /**
  * Extends quiz time for individual or bulk in-progress students.
@@ -108,6 +110,19 @@ class extend_quiz_time extends external_api {
         self::validate_context($context);
         require_capability('quiz/livequizmonitor:view', $context);
         require_capability('mod/quiz:manageoverrides', $context);
+
+        supervision_scope_manager::validate_group_access((int) $params['groupid'], $cm);
+
+        if ($params['scope'] === extend_time_manager::SCOPE_INDIVIDUAL) {
+            if (!supervision_scope_manager::is_user_in_cohort(
+                (int) $params['userid'],
+                $context,
+                (int) $params['groupid'],
+                $cm
+            )) {
+                throw new moodle_exception('error:usernotvisible', 'quiz_livequizmonitor');
+            }
+        }
 
         $outcome = extend_time_manager::extend_quiz_time(
             $course,

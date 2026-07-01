@@ -24,11 +24,14 @@
 
 namespace quiz_livequizmonitor\external;
 
+require_once(__DIR__ . '/../traits/group_scope_test_trait.php');
+
 use advanced_testcase;
 use context_module;
 use mod_quiz\quiz_attempt;
 use moodle_exception;
 use quiz_livequizmonitor\local\manager\onesession_manager;
+use quiz_livequizmonitor\tests\traits\group_scope_test_trait;
 use required_capability_exception;
 
 /**
@@ -38,6 +41,7 @@ use required_capability_exception;
  * @runTestsInSeparateProcesses
  */
 final class unblock_student_test extends advanced_testcase {
+    use group_scope_test_trait;
 
     /**
      * Require quizaccess_onesession or skip.
@@ -249,5 +253,31 @@ final class unblock_student_test extends advanced_testcase {
 
         $this->expectException(required_capability_exception::class);
         unblock_student::execute($cm->id, $student->id, $attempt->id);
+    }
+
+    /**
+     * Teacher in Group A cannot unblock a student in Group B.
+     */
+    public function test_execute_rejects_out_of_scope_user(): void {
+        $this->resetAfterTest();
+
+        $fixture = $this->create_separate_groups_fixture();
+        $quiz = $fixture['quiz'];
+        $cm = $fixture['cm'];
+        $quizgenerator = $this->getDataGenerator()->get_plugin_generator('mod_quiz');
+
+        $this->setUser($fixture['studentb']);
+        $attempt = $quizgenerator->create_attempt($quiz->id, $fixture['studentb']->id);
+
+        $this->setUser($fixture['teacher']);
+        $this->set_activity_group($cm, (int) $fixture['groupa']->id);
+
+        $this->expectException(moodle_exception::class);
+        try {
+            unblock_student::execute($cm->id, $fixture['studentb']->id, $attempt->id);
+        } catch (moodle_exception $e) {
+            $this->assertSame('error:usernotvisible', $e->errorcode);
+            throw $e;
+        }
     }
 }

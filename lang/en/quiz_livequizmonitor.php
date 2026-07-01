@@ -25,6 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['emptycohort'] = 'No eligible students were found for this quiz.';
+$string['error:groupnotvisible'] = 'You do not have permission to view that group in this monitor.';
 $string['error:usernotvisible'] = 'The selected student is not visible in this monitor view.';
 $string['extend:addtime'] = 'Add time';
 $string['extend:bulklabel'] = 'Extend time';

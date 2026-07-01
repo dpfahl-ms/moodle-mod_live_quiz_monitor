@@ -25,6 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['emptycohort'] = 'Für dieses Quiz wurden keine berechtigten Teilnehmenden gefunden.';
+$string['error:groupnotvisible'] = 'Sie haben keine Berechtigung, diese Gruppe in diesem Monitor anzuzeigen.';
 $string['error:usernotvisible'] = 'Die ausgewählte Person ist in dieser Monitor-Ansicht nicht sichtbar.';
 $string['extend:addtime'] = 'Zeit hinzufügen';
 $string['extend:bulklabel'] = 'Zeit verlängern';

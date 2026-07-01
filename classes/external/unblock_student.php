@@ -34,8 +34,9 @@ use external_function_parameters;
 use external_single_structure;
 use external_value;
 use mod_quiz\quiz_attempt;
-use quiz_livequizmonitor\local\manager\monitor_manager;
+use moodle_exception;
 use quiz_livequizmonitor\local\manager\onesession_manager;
+use quiz_livequizmonitor\local\manager\supervision_scope_manager;
 
 /**
  * Unblocks a student attempt locked by quizaccess_onesession.
@@ -78,6 +79,10 @@ class unblock_student extends external_api {
 
         self::validate_context($context);
         require_capability('quiz/livequizmonitor:view', $context);
+
+        if (!supervision_scope_manager::is_user_in_cohort((int) $params['userid'], $context, 0, $cm)) {
+            throw new moodle_exception('error:usernotvisible', 'quiz_livequizmonitor');
+        }
 
         if (!onesession_manager::is_active_for_quiz((int) $quiz->id, $quiz)) {
             throw new \moodle_exception('onesession:notactive', 'quiz_livequizmonitor');

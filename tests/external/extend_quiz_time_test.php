@@ -24,9 +24,13 @@
 
 namespace quiz_livequizmonitor\external;
 
+require_once(__DIR__ . '/../traits/group_scope_test_trait.php');
+
 use advanced_testcase;
 use invalid_parameter_exception;
+use moodle_exception;
 use quiz_livequizmonitor\local\manager\extend_time_manager;
+use quiz_livequizmonitor\tests\traits\group_scope_test_trait;
 use required_capability_exception;
 
 /**
@@ -36,6 +40,7 @@ use required_capability_exception;
  * @runTestsInSeparateProcesses
  */
 final class extend_quiz_time_test extends advanced_testcase {
+    use group_scope_test_trait;
 
     /**
      * Create a timed quiz with one question.
@@ -150,5 +155,45 @@ final class extend_quiz_time_test extends advanced_testcase {
 
         $this->expectException(required_capability_exception::class);
         extend_quiz_time::execute($cm->id, 0, 15, extend_time_manager::SCOPE_BULK, 0);
+    }
+
+    /**
+     * Teacher in Group A cannot extend time for a student in Group B.
+     */
+    public function test_execute_rejects_out_of_scope_user_individual(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $fixture = $this->create_separate_groups_fixture();
+        $quiz = $fixture['quiz'];
+        $cm = $fixture['cm'];
+        $quizgenerator = $this->getDataGenerator()->get_plugin_generator('mod_quiz');
+        $DB->set_field('quiz', 'timelimit', 600, ['id' => $quiz->id]);
+
+        $this->setUser($fixture['studentb']);
+        $quizgenerator->create_attempt($quiz->id, $fixture['studentb']->id);
+
+        $this->setUser($fixture['teacher']);
+        $this->set_activity_group($cm, (int) $fixture['groupa']->id);
+
+        $this->expectException(moodle_exception::class);
+        try {
+            extend_quiz_time::execute(
+                $cm->id,
+                (int) $fixture['groupa']->id,
+                15,
+                extend_time_manager::SCOPE_INDIVIDUAL,
+                $fixture['studentb']->id
+            );
+        } catch (moodle_exception $e) {
+            $this->assertSame('error:usernotvisible', $e->errorcode);
+            throw $e;
+        }
+
+        $this->assertFalse($DB->record_exists('quiz_overrides', [
+            'quiz' => $quiz->id,
+            'userid' => $fixture['studentb']->id,
+        ]));
     }
 }

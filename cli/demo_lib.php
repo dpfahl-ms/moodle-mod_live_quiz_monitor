@@ -186,6 +186,48 @@ function demo_resolve_course_quiz(): array {
 }
 
 /**
+ * Remove all per-user quiz overrides for one quiz via core override manager.
+ *
+ * @param int $quizid Quiz id.
+ * @param bool $quiet Suppress log output.
+ * @return int Number of overrides deleted.
+ */
+function demo_clear_quiz_user_overrides(int $quizid, bool $quiet = false): int {
+    $quizsettings = \mod_quiz\quiz_settings::create($quizid);
+    $manager = $quizsettings->get_override_manager();
+    $useroverrides = array_values(array_filter(
+        $manager->get_all_overrides(),
+        static fn(stdClass $override): bool => !empty($override->userid)
+    ));
+
+    if ($useroverrides === []) {
+        return 0;
+    }
+
+    $manager->delete_overrides($useroverrides, false);
+    demo_log('  removed ' . count($useroverrides) . ' user override(s) for quiz id ' . $quizid, $quiet);
+    return count($useroverrides);
+}
+
+/**
+ * Remove all per-user quiz overrides for every quiz in a course.
+ *
+ * @param int $courseid Course id.
+ * @param bool $quiet Suppress log output.
+ * @return int Number of overrides deleted.
+ */
+function demo_clear_course_user_quiz_overrides(int $courseid, bool $quiet = false): int {
+    global $DB;
+
+    $deleted = 0;
+    $quizzes = $DB->get_records('quiz', ['course' => $courseid], 'id ASC', 'id');
+    foreach ($quizzes as $quiz) {
+        $deleted += demo_clear_quiz_user_overrides((int) $quiz->id, $quiet);
+    }
+    return $deleted;
+}
+
+/**
  * Whether a question attempt has a saved answer (Moodle 4.5 compatible).
  *
  * Mirrors monitor_manager::count_answered_questions() state checks.

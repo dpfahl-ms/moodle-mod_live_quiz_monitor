@@ -33,161 +33,19 @@ require_once($CFG->libdir . '/testing/classes/util.php');
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 require_once($CFG->dirroot . '/question/editlib.php');
 require_once(__DIR__ . '/demo_lib.php');
+require_once(__DIR__ . '/setup_lib.php');
 
 use core\session\manager;
-use core_question\local\bank\question_version_status;
 
-/**
- * Create a question category in the given context.
- *
- * @param int $contextid
- * @return stdClass
- */
-function setup_create_question_category(int $contextid): stdClass {
-    global $DB;
-
-    $record = new stdClass();
-    $record->name = 'Demo questions';
-    $record->contextid = $contextid;
-    $record->info = '';
-    $record->infoformat = FORMAT_HTML;
-    $record->stamp = make_unique_id_code();
-    $record->parent = question_get_top_category($contextid, true)->id;
-    $record->sortorder = 999;
-    $record->id = $DB->insert_record('question_categories', $record);
-
-    return $record;
-}
-
-/**
- * Save a question from form data without PHPUnit dependencies.
- *
- * @param string $qtype
- * @param int $categoryid
- * @param stdClass $form
- * @return stdClass
- */
-function setup_save_question(string $qtype, int $categoryid, stdClass $form): stdClass {
-    $form->category = $categoryid;
-    $form->status = $form->status ?? question_version_status::QUESTION_STATUS_READY;
-
-    $question = new stdClass();
-    $question->category = $categoryid;
-    $question->qtype = $qtype;
-    $question->createdby = get_admin()->id;
-    $question->modifiedby = get_admin()->id;
-
-    return question_bank::get_qtype($qtype)->save_question($question, $form);
-}
-
-/**
- * Create demo questions and attach them to a quiz.
- *
- * @param stdClass $quiz Quiz record.
- * @param int $contextid Module context id.
- * @return int Number of questions added.
- */
-function setup_add_demo_questions(stdClass $quiz, int $contextid): int {
-    global $DB;
-
-    $category = setup_create_question_category($contextid);
-    $feedback = ['text' => 'Well done.', 'format' => FORMAT_HTML];
-    $incorrect = ['text' => 'Incorrect.', 'format' => FORMAT_HTML];
-
-    $definitions = [
-        ['type' => 'shortanswer', 'name' => 'Name an amphibian', 'text' => 'Name an amphibian: __________'],
-        ['type' => 'truefalse', 'name' => '2 + 2 equals 4', 'text' => '2 + 2 equals 4.'],
-        ['type' => 'multichoice', 'name' => 'Pick the mammal', 'text' => 'Pick the mammal.'],
-        ['type' => 'shortanswer', 'name' => 'Name a reptile', 'text' => 'Name a reptile: __________'],
-        ['type' => 'truefalse', 'name' => 'The sky is blue', 'text' => 'The sky is blue.'],
-        ['type' => 'multichoice', 'name' => 'Pick a prime number', 'text' => 'Which is a prime number?'],
-        ['type' => 'shortanswer', 'name' => 'Capital of France', 'text' => 'Capital of France: __________'],
-        ['type' => 'truefalse', 'name' => 'Water freezes at 0°C', 'text' => 'Water freezes at 0 degrees Celsius.'],
-        ['type' => 'multichoice', 'name' => 'Pick a colour', 'text' => 'Which is a primary colour?'],
-        ['type' => 'shortanswer', 'name' => 'Name a bird', 'text' => 'Name a bird: __________'],
-    ];
-
-    $slot = 0;
-    $sumgrades = 0.0;
-
-    foreach ($definitions as $definition) {
-        if ($definition['type'] === 'shortanswer') {
-            $question = setup_save_question('shortanswer', $category->id, (object) [
-                'name' => $definition['name'],
-                'questiontext' => ['text' => $definition['text'], 'format' => FORMAT_HTML],
-                'generalfeedback' => ['text' => 'Any reasonable answer counts for the demo.', 'format' => FORMAT_HTML],
-                'defaultmark' => 1.0,
-                'usecase' => false,
-                'answer' => ['frog', 'toad', 'paris', 'eagle', '*'],
-                'fraction' => ['1.0', '0.8', '1.0', '1.0', '0.0'],
-                'feedback' => [
-                    ['text' => 'Correct.', 'format' => FORMAT_HTML],
-                    ['text' => 'Correct.', 'format' => FORMAT_HTML],
-                    ['text' => 'Correct.', 'format' => FORMAT_HTML],
-                    ['text' => 'Correct.', 'format' => FORMAT_HTML],
-                    ['text' => 'Incorrect.', 'format' => FORMAT_HTML],
-                ],
-            ]);
-        } else if ($definition['type'] === 'truefalse') {
-            $question = setup_save_question('truefalse', $category->id, (object) [
-                'name' => $definition['name'],
-                'questiontext' => ['text' => $definition['text'], 'format' => FORMAT_HTML],
-                'generalfeedback' => ['text' => 'True or false.', 'format' => FORMAT_HTML],
-                'defaultmark' => 1.0,
-                'correctanswer' => '1',
-                'feedbacktrue' => $feedback,
-                'feedbackfalse' => $incorrect,
-            ]);
-        } else {
-            $question = setup_save_question('multichoice', $category->id, (object) [
-                'name' => $definition['name'],
-                'questiontext' => ['text' => $definition['text'], 'format' => FORMAT_HTML],
-                'generalfeedback' => ['text' => 'Pick one option.', 'format' => FORMAT_HTML],
-                'defaultmark' => 1.0,
-                'noanswers' => 4,
-                'numhints' => 0,
-                'penalty' => 0.3333333,
-                'shuffleanswers' => 1,
-                'answernumbering' => '123',
-                'showstandardinstruction' => 0,
-                'single' => '1',
-                'correctfeedback' => $feedback,
-                'partiallycorrectfeedback' => $feedback,
-                'incorrectfeedback' => $incorrect,
-                'shownumcorrect' => 1,
-                'fraction' => ['1.0', '0.0', '0.0', '0.0'],
-                'answer' => [
-                    ['text' => 'One', 'format' => FORMAT_PLAIN],
-                    ['text' => 'Two', 'format' => FORMAT_PLAIN],
-                    ['text' => 'Three', 'format' => FORMAT_PLAIN],
-                    ['text' => 'Four', 'format' => FORMAT_PLAIN],
-                ],
-                'feedback' => [
-                    ['text' => 'Correct.', 'format' => FORMAT_HTML],
-                    ['text' => 'Incorrect.', 'format' => FORMAT_HTML],
-                    ['text' => 'Incorrect.', 'format' => FORMAT_HTML],
-                    ['text' => 'Incorrect.', 'format' => FORMAT_HTML],
-                ],
-            ]);
-        }
-
-        quiz_add_quiz_question($question->id, $quiz, $slot, 1.0);
-        $sumgrades += 1.0;
-        $slot++;
-    }
-
-    $quiz->sumgrades = $sumgrades;
-    $quiz->grade = 10;
-    $DB->update_record('quiz', $quiz);
-
-    return $slot;
-}
+if (defined('CLI_SCRIPT') && !empty($_SERVER['SCRIPT_FILENAME'])
+        && realpath($_SERVER['SCRIPT_FILENAME']) === realpath(__FILE__)) {
 
 list($options, $unrecognised) = cli_get_params(
     [
         'help' => false,
         'quiet' => false,
         'force' => false,
+        'clear-overrides' => false,
         'students' => DEMO_STUDENT_COUNT,
     ],
     [
@@ -200,14 +58,15 @@ if (!empty($options['help'])) {
 Create development course with quiz, enrolled students and sample attempts.
 
 Options:
-  --force      Delete and recreate course if it already exists
-  --students=N Number of demo students to enrol (default: 20)
-  --quiet      Suppress informational output
-  -h, --help   Print this help
+  --force            Delete and recreate course if it already exists
+  --clear-overrides  Remove all user quiz overrides in QUIZMON and exit
+  --students=N       Number of demo students to enrol (default: 20)
+  --quiet            Suppress informational output
+  -h, --help         Print this help
 
 Example:
   php mod/quiz/report/livequizmonitor/cli/setup_dev_data.php --force
-  php mod/quiz/report/livequizmonitor/cli/simulate_quiz_demo.php
+  php mod/quiz/report/livequizmonitor/cli/setup_dev_data.php --clear-overrides
 
 EOF;
     exit(0);
@@ -215,15 +74,29 @@ EOF;
 
 $quiet = !empty($options['quiet']);
 $force = !empty($options['force']);
+$clearoverrides = !empty($options['clear-overrides']);
 $studentcount = max(1, (int) $options['students']);
 
 manager::set_user(get_admin());
 
+global $DB;
+
+if ($clearoverrides) {
+    $course = $DB->get_record('course', ['shortname' => DEMO_COURSE_SHORTNAME], '*', IGNORE_MISSING);
+    if (!$course) {
+        cli_error('Course ' . DEMO_COURSE_SHORTNAME . ' not found.');
+    }
+    demo_log('Clearing user quiz overrides in ' . DEMO_COURSE_SHORTNAME . ' (id ' . $course->id . ')', $quiet);
+    $removed = demo_clear_course_user_quiz_overrides((int) $course->id, $quiet);
+    if (!$quiet) {
+        mtrace('Removed ' . $removed . ' user quiz override(s).');
+    }
+    exit(0);
+}
+
 $generator = testing_util::get_data_generator();
 /** @var mod_quiz_generator $quizgenerator */
 $quizgenerator = $generator->get_plugin_generator('mod_quiz');
-
-global $DB;
 
 $existing = $DB->get_record('course', ['shortname' => DEMO_COURSE_SHORTNAME], 'id', IGNORE_MISSING);
 if ($existing) {
@@ -272,6 +145,9 @@ $questioncount = setup_add_demo_questions($quiz, context_module::instance($cm->i
 
 $quizid = (int) $quiz->id;
 
+demo_log('Clearing user quiz overrides', $quiet);
+demo_clear_course_user_quiz_overrides((int) $course->id, $quiet);
+
 $courseurl = (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false);
 $quizurl = (new moodle_url('/mod/quiz/view.php', ['id' => $cm->id]))->out(false);
 $reporturl = (new moodle_url('/mod/quiz/report.php', [
@@ -294,4 +170,6 @@ if (!$quiet) {
     mtrace('Run the live demo simulator:');
     mtrace('  php mod/quiz/report/livequizmonitor/cli/simulate_quiz_demo.php');
     echo PHP_EOL;
+}
+
 }
