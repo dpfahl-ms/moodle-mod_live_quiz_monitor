@@ -30,7 +30,6 @@ defined('MOODLE_INTERNAL') || die();
  * Maps to {quiz_livequizmonitor_notes}.
  */
 class student_note {
-
     /** @var int|null */
     public ?int $id = null;
 

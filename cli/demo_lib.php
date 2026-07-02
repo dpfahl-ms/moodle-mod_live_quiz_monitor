@@ -28,14 +28,23 @@ require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 
 use mod_quiz\quiz_attempt;
 
+/** @var string Demo course shortname. */
 const DEMO_COURSE_SHORTNAME = 'QUIZMON';
+/** @var string Demo quiz display name. */
 const DEMO_QUIZ_NAME = 'Live Quiz Monitor Demo';
+/** @var int Number of demo students to create. */
 const DEMO_STUDENT_COUNT = 20;
+/** @var string Password assigned to demo student accounts. */
 const DEMO_STUDENT_PASSWORD = 'Student123!';
+/** @var int Number of short-answer questions in the demo quiz. */
 const DEMO_QUESTION_COUNT = 10;
+/** @var int Demo quiz time limit in seconds. */
 const DEMO_QUIZ_TIMELIMIT = 300; // 5 minutes in seconds.
+/** @var int Minimum simulation tick interval in seconds. */
 const DEMO_INTERVAL_MIN = 1;
+/** @var int Maximum simulation tick interval in seconds. */
 const DEMO_INTERVAL_MAX = 1;
+/** @var int Total demo simulation duration in seconds. */
 const DEMO_DURATION = 120;
 
 /**

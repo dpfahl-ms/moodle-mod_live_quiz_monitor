@@ -24,6 +24,8 @@
 
 namespace quiz_livequizmonitor\external;
 
+defined('MOODLE_INTERNAL') || die();
+
 require_once(__DIR__ . '/../traits/group_scope_test_trait.php');
 
 use advanced_testcase;

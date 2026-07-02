@@ -1,3 +1,21 @@
+{{!
+    @template quiz_livequizmonitor/extend_time_modal_body
+
+    Modal body for extending quiz attempt time.
+
+    Example context (json):
+    {
+        "description": "Extend time for Jane Student.",
+        "addtimelabel": "Add time",
+        "presets": [
+            {"minutes": 5, "active": false},
+            {"minutes": 10, "active": true},
+            {"minutes": 15, "active": false}
+        ],
+        "previewlabel": "New end time",
+        "previewvalue": "12:30"
+    }
+}}
 <div class="livequizmonitor-extend-modal-body">
     <p class="livequizmonitor-extend-description" data-region="extend-description">{{description}}</p>
 

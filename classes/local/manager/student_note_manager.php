@@ -36,7 +36,6 @@ use stdClass;
  * Manages {quiz_livequizmonitor_notes} records.
  */
 class student_note_manager {
-
     /** @var int Maximum note length in characters. */
     public const MAX_LENGTH = 2000;
 

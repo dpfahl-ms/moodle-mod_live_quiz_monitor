@@ -37,15 +37,22 @@ require_once(__DIR__ . '/setup_lib.php');
 
 use core\session\manager;
 
+/** @var string Security test course shortname. */
 const SECURITY_COURSE_SHORTNAME = 'LQMSEC';
+/** @var string Security test quiz name. */
 const SECURITY_QUIZ_NAME = 'Security Test Quiz';
+/** @var string Username for teacher A in the security fixture. */
 const SECURITY_TEACHER_USERNAME = 'teachera';
+/** @var string Password for teacher A in the security fixture. */
 const SECURITY_TEACHER_PASSWORD = 'Teacher123!';
+/** @var string Username for student A in the security fixture. */
 const SECURITY_STUDENT_A = 'studenta';
+/** @var string Username for student B in the security fixture. */
 const SECURITY_STUDENT_B = 'studentb';
+/** @var string Password for security fixture student accounts. */
 const SECURITY_STUDENT_PASSWORD = 'Student123!';
 
-list($options, $unrecognised) = cli_get_params(
+[$options, $unrecognised] = cli_get_params(
     [
         'help' => false,
         'quiet' => false,

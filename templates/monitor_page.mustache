@@ -1,3 +1,55 @@
+{{!
+    @template quiz_livequizmonitor/monitor_page
+
+    Root page template for the live quiz monitor report.
+
+    Example context (json):
+    {
+        "cmid": 10,
+        "groupid": 0,
+        "showemailcolumn": true,
+        "showactionscolumn": true,
+        "lastupdatedprefix": "Last updated:",
+        "extendrowlabel": "Extend time",
+        "notesaddlabel": "Add note",
+        "noteseditlabel": "Edit note",
+        "unblocklabel": "Unblock",
+        "blockedflaglabel": "Blocked",
+        "actionsmenulabel": "Actions",
+        "canextend": true,
+        "onesessionactive": false,
+        "canunblock": false,
+        "quizname": "Midterm quiz",
+        "liveindicator": "Live",
+        "updatedattext": "Last updated: 12:00",
+        "bulkextenddisabled": false,
+        "bulkextendlabel": "Extend all",
+        "staleindicator": "Data may be stale",
+        "hasstudents": true,
+        "emptycohort": "No students in this cohort.",
+        "summary": {
+            "notstarted": {"label": "Not started", "count": 1, "percent": 25, "statusclass": "border-secondary"},
+            "inprogress": {"label": "In progress", "count": 2, "percent": 50, "statusclass": "border-info"},
+            "completed": {"label": "Completed", "count": 1, "percent": 25, "statusclass": "border-success"}
+        },
+        "filter": {
+            "chipsgrouplabel": "Filter students",
+            "searchplaceholder": "Search students",
+            "clearlabel": "Clear filters",
+            "chips": []
+        },
+        "filterempty": "No students match the current filters.",
+        "tableheaders": {
+            "status": "Status",
+            "student": "Student",
+            "email": "Email",
+            "progress": "Progress",
+            "timeremaining": "Time remaining",
+            "actions": "Actions"
+        },
+        "students": []
+    }
+}}
 <div class="livequizmonitor-root" data-region="live-quiz-monitor"
      data-cmid="{{cmid}}"
      data-groupid="{{groupid}}"

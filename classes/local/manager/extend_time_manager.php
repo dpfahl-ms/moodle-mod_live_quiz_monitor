@@ -40,7 +40,6 @@ use stdClass;
  * Applies relative time extensions through core quiz user overrides.
  */
 class extend_time_manager {
-
     /** @var int[] Allowed extension durations in minutes. */
     public const ALLOWED_MINUTES = [5, 10, 15, 30];
 
@@ -86,7 +85,12 @@ class extend_time_manager {
 
         $context = context_module::instance($cm->id);
         if (!self::user_can_extend($context)) {
-            throw new moodle_exception('nopermissions', 'error', '', get_string('extend:errornopermission', 'quiz_livequizmonitor'));
+            throw new moodle_exception(
+                'nopermissions',
+                'error',
+                '',
+                get_string('extend:errornopermission', 'quiz_livequizmonitor')
+            );
         }
 
         if (!in_array($minutes, self::ALLOWED_MINUTES, true)) {
@@ -260,7 +264,7 @@ class extend_time_manager {
         if ($relevant === null) {
             return null;
         }
-        if (!in_array($relevant->state, [quiz_attempt::IN_PROGRESS, quiz_attempt::OVERDUE], true)) {
+        if (!monitor_manager::is_active_attempt_state($relevant->state)) {
             return null;
         }
         return $relevant;

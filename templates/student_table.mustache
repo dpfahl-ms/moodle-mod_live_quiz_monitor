@@ -1,3 +1,24 @@
+{{!
+    @template quiz_livequizmonitor/student_table
+
+    Student table for the live quiz monitor.
+
+    Example context (json):
+    {
+        "filterempty": "No students match the current filters.",
+        "showemailcolumn": true,
+        "showactionscolumn": true,
+        "tableheaders": {
+            "status": "Status",
+            "student": "Student",
+            "email": "Email",
+            "progress": "Progress",
+            "timeremaining": "Time remaining",
+            "actions": "Actions"
+        },
+        "students": []
+    }
+}}
 <div class="alert alert-secondary d-none mb-3" data-region="filter-empty" role="status">
     {{filterempty}}
 </div>

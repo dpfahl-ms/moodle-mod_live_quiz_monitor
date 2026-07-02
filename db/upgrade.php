@@ -85,10 +85,12 @@ function xmldb_quiz_livequizmonitor_upgrade($oldversion) {
             'plugin' => 'quiz_live_quiz_monitor',
             'name' => 'pollinterval',
         ]);
-        if ($oldpoll && !$DB->record_exists('config_plugins', [
+        if (
+            $oldpoll && !$DB->record_exists('config_plugins', [
             'plugin' => 'quiz_livequizmonitor',
             'name' => 'pollinterval',
-        ])) {
+            ])
+        ) {
             $oldpoll->plugin = 'quiz_livequizmonitor';
             $DB->update_record('config_plugins', $oldpoll);
         }

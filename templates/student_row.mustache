@@ -1,3 +1,39 @@
+{{!
+    @template quiz_livequizmonitor/student_row
+
+    Single student row in the live quiz monitor table.
+
+    Example context (json):
+    {
+        "userid": 42,
+        "statusclass": "badge-info",
+        "statuslabel": "In progress",
+        "fullname": "Jane Student",
+        "showemailcolumn": true,
+        "email": "jane@example.com",
+        "progresspercent": 50,
+        "progresstext": "5 / 10",
+        "progressbarclass": "bg-info",
+        "hastimer": true,
+        "timeremaining": 600,
+        "timeremainingdisplay": "10:00",
+        "showactionscolumn": true,
+        "isblocked": false,
+        "blockedflaglabel": "Blocked by one-session rule",
+        "actionsmenulabel": "Actions",
+        "notelabel": "Add note",
+        "hasnote": false,
+        "canextend": true,
+        "extendrowlabel": "Extend time",
+        "extendactionenabled": true,
+        "attemptendat": 1700000000,
+        "onesessionactive": false,
+        "_mustache_lint_wrapper": true
+    }
+}}
+{{#_mustache_lint_wrapper}}
+<table class="visually-hidden" aria-hidden="true"><tbody>
+{{/_mustache_lint_wrapper}}
 <tr data-userid="{{userid}}">
     <td>
         <span class="badge {{statusclass}}">{{statuslabel}}</span>
@@ -39,3 +75,6 @@
     </td>
     {{/showactionscolumn}}
 </tr>
+{{#_mustache_lint_wrapper}}
+</tbody></table>
+{{/_mustache_lint_wrapper}}

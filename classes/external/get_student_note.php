@@ -41,7 +41,6 @@ use quiz_livequizmonitor\local\manager\student_note_manager;
  * Returns note content for one student in a quiz.
  */
 class get_student_note extends external_api {
-
     /**
      * Parameter description.
      *

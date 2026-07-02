@@ -41,7 +41,6 @@ use quiz_livequizmonitor\local\manager\student_note_manager;
  * Saves or deletes a student supervision note.
  */
 class save_student_note extends external_api {
-
     /**
      * Parameter description.
      *

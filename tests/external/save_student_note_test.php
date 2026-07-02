@@ -36,8 +36,9 @@ use required_capability_exception;
  * @runTestsInSeparateProcesses
  */
 final class save_student_note_test extends advanced_testcase {
-
     /**
+     * Create course, teacher, student, and quiz module for monitor API tests.
+     *
      * @return array{0: \stdClass, 1: \stdClass, 2: \stdClass, 3: \stdClass}
      */
     private function create_monitor_fixture(): array {

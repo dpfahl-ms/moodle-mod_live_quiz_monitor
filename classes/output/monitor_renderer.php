@@ -34,7 +34,6 @@ use stdClass;
  * Output renderer for monitor page templates.
  */
 class monitor_renderer extends plugin_renderer_base {
-
     /**
      * Prepare template context from monitor state.
      *

@@ -1,3 +1,25 @@
+{{!
+    @template quiz_livequizmonitor/row_action_menu
+
+    Per-row action menu for the live quiz monitor.
+
+    Example context (json):
+    {
+        "userid": 42,
+        "fullname": "Jane Student",
+        "actionsmenulabel": "Actions",
+        "notelabel": "Add note",
+        "hasnote": false,
+        "canextend": true,
+        "extendrowlabel": "Extend time",
+        "extendactionenabled": true,
+        "attemptendat": 1700000000,
+        "onesessionactive": false,
+        "unblocklabel": "Unblock",
+        "unblockactionenabled": false,
+        "attemptid": 7
+    }
+}}
 <div class="dropdown livequizmonitor-row-actions" data-region="row-actions">
     <button type="button"
             class="btn btn-icon dropdown-toggle no-caret d-flex align-items-center justify-content-center"
@@ -8,7 +30,7 @@
         <i class="icon fa fa-ellipsis-vertical fa-fw" aria-hidden="true"></i>
         <span class="sr-only">{{actionsmenulabel}}</span>
     </button>
-    <div class="dropdown-menu dropdown-menu-right">
+    <div class="dropdown-menu dropdown-menu-right" role="menu">
         <a href="#"
            class="dropdown-item menu-action"
            role="menuitem"

@@ -32,7 +32,6 @@ use advanced_testcase;
  * @covers \quiz_livequizmonitor\local\manager\extend_time_manager
  */
 final class extend_time_manager_test extends advanced_testcase {
-
     /**
      * Create a timed quiz with one question.
      *

@@ -24,7 +24,7 @@
  */
 
 // NOTE: no MOODLE_INTERNAL used, this file may be required by behat before including /config.php.
-require_once(__DIR__ . '/../../../../lib/behat/behat_base.php');
+require_once(__DIR__ . '/../../../../../../lib/behat/behat_base.php');
 
 use Moodle\BehatExtension\Exception\SkippedException;
 
@@ -37,6 +37,23 @@ use Moodle\BehatExtension\Exception\SkippedException;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class behat_quiz_livequizmonitor extends behat_base {
+    /**
+     * Open the live monitor report for a quiz by activity name.
+     *
+     * @When /^I am on the live monitor report for "(?P<quizname>[^"]*)"$/
+     * @param string $quizname Quiz activity name.
+     */
+    public function i_am_on_the_live_monitor_report_for(string $quizname): void {
+        global $DB;
+
+        $quiz = $DB->get_record('quiz', ['name' => $quizname], '*', MUST_EXIST);
+        $cm = get_coursemodule_from_instance('quiz', $quiz->id, $quiz->course, false, MUST_EXIST);
+        $url = new \moodle_url('/mod/quiz/report.php', [
+            'id' => $cm->id,
+            'mode' => 'livequizmonitor',
+        ]);
+        $this->getSession()->visit($this->locate_path($url->out_as_local_url(false)));
+    }
 
     /**
      * Require quizaccess_onesession or skip scenario.

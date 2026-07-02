@@ -35,7 +35,6 @@ use stdClass;
  * Shared group and cohort checks for monitor supervision actions.
  */
 class supervision_scope_manager {
-
     /**
      * Ensure the current user may request monitor data for the given activity group.
      *

@@ -37,7 +37,6 @@ use stdClass;
  * Manager for cohort resolution, status mapping, and monitor payloads.
  */
 class monitor_manager {
-
     /** @var string Monitor status: not started. */
     public const STATUS_NOTSTARTED = 'notstarted';
 
@@ -65,6 +64,28 @@ class monitor_manager {
             quiz_attempt::FINISHED,
             self::QUIZ_ATTEMPT_SUBMITTED,
         ];
+    }
+
+    /**
+     * Moodle attempt states treated as active (in progress or overdue).
+     *
+     * @return string[]
+     */
+    public static function active_attempt_states(): array {
+        return [
+            quiz_attempt::IN_PROGRESS,
+            quiz_attempt::OVERDUE,
+        ];
+    }
+
+    /**
+     * Whether a raw attempt state string is active.
+     *
+     * @param string $state Attempt state from quiz_attempts.state.
+     * @return bool
+     */
+    public static function is_active_attempt_state(string $state): bool {
+        return in_array($state, self::active_attempt_states(), true);
     }
 
     /**
@@ -182,7 +203,7 @@ class monitor_manager {
         $latestfinished = null;
 
         foreach ($attempts as $attempt) {
-            if (in_array($attempt->state, [quiz_attempt::IN_PROGRESS, quiz_attempt::OVERDUE], true)) {
+            if (self::is_active_attempt_state($attempt->state)) {
                 return $attempt;
             }
             if (in_array($attempt->state, self::completed_attempt_states(), true) && $latestfinished === null) {
@@ -271,7 +292,7 @@ class monitor_manager {
         if ($attempt === null) {
             return self::STATUS_NOTSTARTED;
         }
-        if (in_array($attempt->state, [quiz_attempt::IN_PROGRESS, quiz_attempt::OVERDUE], true)) {
+        if (self::is_active_attempt_state($attempt->state)) {
             return self::STATUS_INPROGRESS;
         }
         if (in_array($attempt->state, self::completed_attempt_states(), true)) {
@@ -378,23 +399,13 @@ class monitor_manager {
      * @return int
      */
     protected static function count_answered_questions(quiz_attempt $attemptobj): int {
-        $answered = 0;
+        $total = 0;
         foreach ($attemptobj->get_slots() as $slot) {
-            $qa = $attemptobj->get_question_attempt($slot);
-            switch ($qa->get_state_class(false)) {
-                case 'answersaved':
-                case 'complete':
-                case 'gradedright':
-                case 'gradedwrong':
-                case 'gradedpartial':
-                case 'mangrright':
-                case 'mangrpartial':
-                case 'mangrwrong':
-                    $answered++;
-                    break;
+            if ($attemptobj->is_real_question($slot)) {
+                $total++;
             }
         }
-        return $answered;
+        return $total - $attemptobj->get_number_of_unanswered_questions();
     }
 
     /**
@@ -443,7 +454,7 @@ class monitor_manager {
             self::STATUS_COMPLETED => 2,
         ];
 
-        usort($rows, static function(stdClass $a, stdClass $b) use ($rank): int {
+        usort($rows, static function (stdClass $a, stdClass $b) use ($rank): int {
             $cmp = ($rank[$a->status] ?? 99) <=> ($rank[$b->status] ?? 99);
             if ($cmp !== 0) {
                 return $cmp;
@@ -472,14 +483,14 @@ class monitor_manager {
             }
         }
 
-        $percent = static function(int $count) use ($total): int {
+        $percent = static function (int $count) use ($total): int {
             if ($total === 0) {
                 return 0;
             }
             return (int) round($count / $total * 100);
         };
 
-        $buildbucket = static function(string $status, string $labelkey) use ($counts, $percent): stdClass {
+        $buildbucket = static function (string $status, string $labelkey) use ($counts, $percent): stdClass {
             $presentation = self::get_status_presentation($status);
             return (object) [
                 'count' => $counts[$status],

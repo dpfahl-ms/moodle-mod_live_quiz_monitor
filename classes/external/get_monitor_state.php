@@ -41,7 +41,6 @@ use quiz_livequizmonitor\local\manager\supervision_scope_manager;
  * Returns monitor state for AJAX polling.
  */
 class get_monitor_state extends external_api {
-
     /**
      * Parameter description.
      *

@@ -99,23 +99,42 @@ function setup_add_demo_questions(stdClass $quiz, int $contextid): int {
     $slot = 0;
     $sumgrades = 0.0;
 
+    $shortansweranswers = [
+        'Name an amphibian' => [
+            'answer' => ['frog', 'toad', '*'],
+            'fraction' => ['1.0', '0.8', '0.0'],
+        ],
+        'Name a reptile' => [
+            'answer' => ['snake', 'lizard', '*'],
+            'fraction' => ['1.0', '0.8', '0.0'],
+        ],
+        'Capital of France' => [
+            'answer' => ['paris', '*'],
+            'fraction' => ['1.0', '0.0'],
+        ],
+        'Name a bird' => [
+            'answer' => ['eagle', 'hawk', '*'],
+            'fraction' => ['1.0', '0.8', '0.0'],
+        ],
+    ];
+
     foreach ($definitions as $definition) {
         if ($definition['type'] === 'shortanswer') {
+            $answers = $shortansweranswers[$definition['name']];
             $question = setup_save_question('shortanswer', $category->id, (object) [
                 'name' => $definition['name'],
                 'questiontext' => ['text' => $definition['text'], 'format' => FORMAT_HTML],
                 'generalfeedback' => ['text' => 'Any reasonable answer counts for the demo.', 'format' => FORMAT_HTML],
                 'defaultmark' => 1.0,
                 'usecase' => false,
-                'answer' => ['frog', 'toad', 'paris', 'eagle', '*'],
-                'fraction' => ['1.0', '0.8', '1.0', '1.0', '0.0'],
-                'feedback' => [
-                    ['text' => 'Correct.', 'format' => FORMAT_HTML],
-                    ['text' => 'Correct.', 'format' => FORMAT_HTML],
-                    ['text' => 'Correct.', 'format' => FORMAT_HTML],
-                    ['text' => 'Correct.', 'format' => FORMAT_HTML],
-                    ['text' => 'Incorrect.', 'format' => FORMAT_HTML],
-                ],
+                'answer' => $answers['answer'],
+                'fraction' => $answers['fraction'],
+                'feedback' => array_map(static function (string $ans): array {
+                    return [
+                        'text' => ($ans === '*') ? 'Incorrect.' : 'Correct.',
+                        'format' => FORMAT_HTML,
+                    ];
+                }, $answers['answer']),
             ]);
         } else if ($definition['type'] === 'truefalse') {
             $question = setup_save_question('truefalse', $category->id, (object) [

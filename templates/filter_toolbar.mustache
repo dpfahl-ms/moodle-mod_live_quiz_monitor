@@ -1,3 +1,22 @@
+{{!
+    @template quiz_livequizmonitor/filter_toolbar
+
+    Filter toolbar for the live quiz monitor.
+
+    Example context (json):
+    {
+        "filter": {
+            "chipsgrouplabel": "Filter students",
+            "searchplaceholder": "Search students",
+            "clearlabel": "Clear filters",
+            "chips": [
+                {"status": "notstarted", "label": "Not started", "count": 2, "active": false},
+                {"status": "inprogress", "label": "In progress", "count": 1, "active": true},
+                {"status": "completed", "label": "Completed", "count": 0, "active": false}
+            ]
+        }
+    }
+}}
 <div class="livequizmonitor-filter-toolbar mb-3" data-region="filter-toolbar">
     <div class="livequizmonitor-filter-toolbar-row d-flex flex-wrap align-items-center" role="toolbar" aria-label="{{filter.chipsgrouplabel}}">
         <div class="livequizmonitor-search-card flex-grow-0">

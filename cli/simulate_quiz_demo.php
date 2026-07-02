@@ -135,7 +135,7 @@ function simulate_pick_next_action(stdClass $quiz, array $students): ?array {
     return null;
 }
 
-list($options, $unrecognised) = cli_get_params(
+[$options, $unrecognised] = cli_get_params(
     [
         'help' => false,
         'quiet' => false,

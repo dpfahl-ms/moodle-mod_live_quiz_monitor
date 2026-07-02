@@ -1,3 +1,17 @@
+{{!
+    @template quiz_livequizmonitor/summary_tiles
+
+    Summary status tiles for the live quiz monitor.
+
+    Example context (json):
+    {
+        "summary": {
+            "notstarted": {"label": "Not started", "count": 1, "percent": 25, "statusclass": "border-secondary"},
+            "inprogress": {"label": "In progress", "count": 2, "percent": 50, "statusclass": "border-info"},
+            "completed": {"label": "Completed", "count": 1, "percent": 25, "statusclass": "border-success"}
+        }
+    }
+}}
 <div class="livequizmonitor-summary-tiles row g-3 mb-4" data-region="summary-tiles">
     <div class="col-md-4">
         <div class="card livequizmonitor-tile livequizmonitor-summary-tile border-left {{summary.notstarted.statusclass}}"

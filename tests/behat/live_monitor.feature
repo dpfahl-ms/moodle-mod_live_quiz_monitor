@@ -18,21 +18,22 @@ Feature: Live quiz monitor report
       | teacher1 | C1     | editingteacher |
       | student1 | C1     | student        |
       | student2 | C1     | student        |
-    And the following "activity" exists:
-      | course | activity | name   | timelimit |
-      | C1     | quiz     | Quiz 1 | 600       |
+    And the following "activities" exist:
+      | activity | name   | course | timelimit |
+      | quiz     | Quiz 1 | C1     | 600       |
+    And the following "question categories" exist:
+      | contextlevel | reference | name           |
+      | Course       | C1        | Test questions |
     And the following "questions" exist:
-      | questioncategory | qtype     | name  | questiontext    |
-      | Test             | shortanswer | SA1 | What is 2+2?    |
+      | questioncategory | qtype       | name | questiontext |
+      | Test questions   | shortanswer | SA1  | What is 2+2? |
     And quiz "Quiz 1" contains the following questions:
-      | question |
-      | SA1      |
+      | question | page |
+      | SA1      | 1    |
     And I log in as "teacher1"
 
   Scenario: Teacher opens Live Monitor report
-    When I am on the "Quiz 1" "quiz activity" page
-    And I navigate to "Reports" in current page administration
-    And I follow "Live Monitor"
+    When I am on the live monitor report for "Quiz 1"
     Then I should see "Live Monitor"
     And I should see "Sam Student"
     And I should see "Not started"
@@ -42,18 +43,14 @@ Feature: Live quiz monitor report
 
   @javascript
   Scenario: Search narrows the student list
-    When I am on the "Quiz 1" "quiz activity" page
-    And I navigate to "Reports" in current page administration
-    And I follow "Live Monitor"
+    When I am on the live monitor report for "Quiz 1"
     And I set the field "Search students…" to "Sam"
     Then I should see "Sam Student"
     And I should not see "Alex Other"
 
   @javascript
   Scenario: Clear filters restores the full student list
-    When I am on the "Quiz 1" "quiz activity" page
-    And I navigate to "Reports" in current page administration
-    And I follow "Live Monitor"
+    When I am on the live monitor report for "Quiz 1"
     And I set the field "Search students…" to "Sam"
     And I click on "Clear filters" "button"
     Then I should see "Sam Student"
@@ -64,9 +61,7 @@ Feature: Live quiz monitor report
     Given I am on the "Quiz 1" "quiz activity" page logged in as "student1"
     And I press "Attempt quiz now"
     And I log in as "teacher1"
-    When I am on the "Quiz 1" "quiz activity" page
-    And I navigate to "Reports" in current page administration
-    And I follow "Live Monitor"
+    When I am on the live monitor report for "Quiz 1"
     And I click on "In progress (1)" "button"
     Then I should see "Sam Student"
     And I should not see "Alex Other"
@@ -76,9 +71,7 @@ Feature: Live quiz monitor report
     Given I am on the "Quiz 1" "quiz activity" page logged in as "student1"
     And I press "Attempt quiz now"
     And I log in as "teacher1"
-    When I am on the "Quiz 1" "quiz activity" page
-    And I navigate to "Reports" in current page administration
-    And I follow "Live Monitor"
+    When I am on the live monitor report for "Quiz 1"
     And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
     And I click on "Extend time" "link"
     Then I should see "Extend quiz time"
@@ -89,18 +82,14 @@ Feature: Live quiz monitor report
     Given I am on the "Quiz 1" "quiz activity" page logged in as "student1"
     And I press "Attempt quiz now"
     And I log in as "teacher1"
-    When I am on the "Quiz 1" "quiz activity" page
-    And I navigate to "Reports" in current page administration
-    And I follow "Live Monitor"
+    When I am on the live monitor report for "Quiz 1"
     And I click on "Extend time" "button"
     Then I should see "Extend quiz time"
     And I should see "Add time"
 
   @javascript @notes
   Scenario: Teacher adds and edits a student note
-    When I am on the "Quiz 1" "quiz activity" page
-    And I navigate to "Reports" in current page administration
-    And I follow "Live Monitor"
+    When I am on the live monitor report for "Quiz 1"
     And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
     And I click on "Add note" "link"
     And I set the field "Note for Sam Student" to "Requested bathroom break"
@@ -112,9 +101,7 @@ Feature: Live quiz monitor report
 
   @javascript @onesession
   Scenario: B1 - No unblock UI when onesession is off
-    When I am on the "Quiz 1" "quiz activity" page
-    And I navigate to "Reports" in current page administration
-    And I follow "Live Monitor"
+    When I am on the live monitor report for "Quiz 1"
     And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
     Then I should not see "Unblock user" "link"
 
@@ -124,9 +111,7 @@ Feature: Live quiz monitor report
     And I am on the "Quiz 1" "quiz activity" page logged in as "student1"
     And I press "Attempt quiz now"
     And I log in as "teacher1"
-    When I am on the "Quiz 1" "quiz activity" page
-    And I navigate to "Reports" in current page administration
-    And I follow "Live Monitor"
+    When I am on the live monitor report for "Quiz 1"
     And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
     Then I should see "Unblock user" "link"
     And ".livequizmonitor-row-actions [data-action='unblock-student'].disabled" "css_element" should exist
@@ -138,9 +123,7 @@ Feature: Live quiz monitor report
     And I press "Attempt quiz now"
     And the student "student1" is blocked by onesession on quiz "Quiz 1"
     And I log in as "teacher1"
-    When I am on the "Quiz 1" "quiz activity" page
-    And I navigate to "Reports" in current page administration
-    And I follow "Live Monitor"
+    When I am on the live monitor report for "Quiz 1"
     Then ".livequizmonitor-blocked-flag" "css_element" should exist
 
   @javascript @onesession
@@ -150,9 +133,7 @@ Feature: Live quiz monitor report
     And I press "Attempt quiz now"
     And the student "student1" is blocked by onesession on quiz "Quiz 1"
     And I log in as "teacher1"
-    When I am on the "Quiz 1" "quiz activity" page
-    And I navigate to "Reports" in current page administration
-    And I follow "Live Monitor"
+    When I am on the live monitor report for "Quiz 1"
     And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
     And I click on "Unblock user" "link"
     Then I should see "Unblock Sam Student"
@@ -165,9 +146,7 @@ Feature: Live quiz monitor report
     And I press "Attempt quiz now"
     And the student "student1" is blocked by onesession on quiz "Quiz 1"
     And I log in as "teacher1"
-    When I am on the "Quiz 1" "quiz activity" page
-    And I navigate to "Reports" in current page administration
-    And I follow "Live Monitor"
+    When I am on the live monitor report for "Quiz 1"
     And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
     And I click on "Unblock user" "link"
     And I click on "Unblock" "button"
@@ -179,9 +158,7 @@ Feature: Live quiz monitor report
     Given the following "users" exist:
       | username | firstname | lastname | email              |
       | student3 | Chris     | Cohort   | student3@test.com  |
-    When I am on the "Quiz 1" "quiz activity" page
-    And I navigate to "Reports" in current page administration
-    And I follow "Live Monitor"
+    When I am on the live monitor report for "Quiz 1"
     Then I should see "Sam Student"
     And I should not see "Chris Cohort"
     When the following "course enrolments" exist:
@@ -192,9 +169,7 @@ Feature: Live quiz monitor report
 
   @javascript @cohortsync
   Scenario: Unenrolled student row disappears without reload
-    When I am on the "Quiz 1" "quiz activity" page
-    And I navigate to "Reports" in current page administration
-    And I follow "Live Monitor"
+    When I am on the live monitor report for "Quiz 1"
     Then I should see "Alex Other"
     When I unenrol user "student2" from course "C1"
     And I wait "6" seconds
@@ -205,9 +180,7 @@ Feature: Live quiz monitor report
     Given I am on the "Quiz 1" "quiz activity" page logged in as "student1"
     And I press "Attempt quiz now"
     And I log in as "teacher1"
-    When I am on the "Quiz 1" "quiz activity" page
-    And I navigate to "Reports" in current page administration
-    And I follow "Live Monitor"
+    When I am on the live monitor report for "Quiz 1"
     And I wait "6" seconds
     Then I should see "In progress"
     And I should see "Sam Student"

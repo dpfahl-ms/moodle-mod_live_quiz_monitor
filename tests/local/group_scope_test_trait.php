@@ -22,7 +22,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace quiz_livequizmonitor\tests\traits;
+namespace quiz_livequizmonitor\local;
 
 use context_course;
 
@@ -98,8 +98,6 @@ trait group_scope_test_trait {
         $quiz = $generator->get_plugin_generator('mod_quiz')->create_instance([
             'course' => $course->id,
             'groupmode' => SEPARATEGROUPS,
-            'grade' => 100,
-            'sumgrades' => 1,
         ]);
         $cm = get_coursemodule_from_instance('quiz', $quiz->id, $course->id, false, MUST_EXIST);
         $context = \context_module::instance($cm->id);

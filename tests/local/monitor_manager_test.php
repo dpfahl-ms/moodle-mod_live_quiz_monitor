@@ -33,7 +33,6 @@ use mod_quiz\quiz_attempt;
  * @covers \quiz_livequizmonitor\local\manager\monitor_manager
  */
 final class monitor_manager_test extends advanced_testcase {
-
     /**
      * Create a course quiz with one short-answer question.
      *
@@ -53,7 +52,11 @@ final class monitor_manager_test extends advanced_testcase {
         $cm = get_coursemodule_from_instance('quiz', $quiz->id, $course->id, false, MUST_EXIST);
 
         $cat = $questiongenerator->create_question_category(['contextid' => \context_module::instance($cm->id)->id]);
-        $question = $questiongenerator->create_question('shortanswer', null, ['category' => $cat->id]);
+        $question = $questiongenerator->create_question('shortanswer', null, [
+            'category' => $cat->id,
+            'answer' => ['frog', '*'],
+            'fraction' => [1, 0],
+        ]);
         quiz_add_quiz_question($question->id, $quiz);
 
         return [$quiz, $cm, $quizgenerator];
@@ -163,6 +166,10 @@ final class monitor_manager_test extends advanced_testcase {
         $attempt = $quizgenerator->create_attempt($quiz->id, $user->id);
         $this->submit_shortanswer($attempt->id, 'frog', true);
 
+        $attemptobj = quiz_attempt::create($attempt->id);
+        $this->assertSame(0, $attemptobj->get_number_of_unanswered_questions(), 'Question should be answered after submit');
+
+        $this->setAdminUser();
         $state = monitor_manager::get_state($course, $cm, $quiz, 0);
         $this->assertCount(1, $state->students);
         $row = $state->students[0];
@@ -356,8 +363,10 @@ final class monitor_manager_test extends advanced_testcase {
             $generator->enrol_user($user->id, $course->id, 'student');
         }
 
-        $this->create_quiz_attempt($quizgenerator, $quiz->id, $users[monitor_manager::STATUS_INPROGRESS]->id, quiz_attempt::IN_PROGRESS);
-        $this->create_quiz_attempt($quizgenerator, $quiz->id, $users[monitor_manager::STATUS_COMPLETED]->id, quiz_attempt::FINISHED);
+        $inprogressuser = $users[monitor_manager::STATUS_INPROGRESS];
+        $completeduser = $users[monitor_manager::STATUS_COMPLETED];
+        $this->create_quiz_attempt($quizgenerator, $quiz->id, $inprogressuser->id, quiz_attempt::IN_PROGRESS);
+        $this->create_quiz_attempt($quizgenerator, $quiz->id, $completeduser->id, quiz_attempt::FINISHED);
 
         $state = monitor_manager::get_state($course, $cm, $quiz, 0);
         $statuses = array_map(static fn($row) => $row->status, $state->students);

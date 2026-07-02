@@ -36,7 +36,6 @@ use stdClass;
  * Detect onesession availability, blocked attempts, and perform unblock.
  */
 class onesession_manager {
-
     /** @var string Event name for a blocked concurrent session attempt. */
     public const EVENT_ATTEMPT_BLOCKED = '\\quizaccess_onesession\\event\\attempt_blocked';
 
@@ -152,7 +151,7 @@ class onesession_manager {
         $attemptobj = quiz_attempt::create($attemptid);
         $quizobj = $attemptobj->get_quizobj();
 
-        if (!in_array($attemptobj->get_state(), [quiz_attempt::IN_PROGRESS, quiz_attempt::OVERDUE], true)) {
+        if (!monitor_manager::is_active_attempt_state($attemptobj->get_state())) {
             throw new moodle_exception('onesession:errnotinprogress', 'quiz_livequizmonitor');
         }
         if ($attemptobj->is_preview()) {

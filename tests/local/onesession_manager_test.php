@@ -35,7 +35,6 @@ use moodle_exception;
  * @covers \quiz_livequizmonitor\local\manager\onesession_manager
  */
 final class onesession_manager_test extends advanced_testcase {
-
     /**
      * Require quizaccess_onesession or skip.
      */

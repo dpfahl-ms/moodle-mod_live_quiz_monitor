@@ -43,7 +43,6 @@ use quiz_livequizmonitor\local\manager\supervision_scope_manager;
  * Extends quiz time for individual or bulk in-progress students.
  */
 class extend_quiz_time extends external_api {
-
     /**
      * Parameter description.
      *
@@ -114,12 +113,14 @@ class extend_quiz_time extends external_api {
         supervision_scope_manager::validate_group_access((int) $params['groupid'], $cm);
 
         if ($params['scope'] === extend_time_manager::SCOPE_INDIVIDUAL) {
-            if (!supervision_scope_manager::is_user_in_cohort(
-                (int) $params['userid'],
-                $context,
-                (int) $params['groupid'],
-                $cm
-            )) {
+            if (
+                !supervision_scope_manager::is_user_in_cohort(
+                    (int) $params['userid'],
+                    $context,
+                    (int) $params['groupid'],
+                    $cm
+                )
+            ) {
                 throw new moodle_exception('error:usernotvisible', 'quiz_livequizmonitor');
             }
         }

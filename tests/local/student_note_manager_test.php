@@ -33,7 +33,6 @@ use moodle_exception;
  * @covers \quiz_livequizmonitor\local\manager\student_note_manager
  */
 final class student_note_manager_test extends advanced_testcase {
-
     /**
      * Create a quiz with one enrolled student.
      *

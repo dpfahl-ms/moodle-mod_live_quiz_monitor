@@ -31,7 +31,6 @@ use quiz_livequizmonitor\output\monitor_renderer;
  * Live monitor quiz report.
  */
 class quiz_livequizmonitor_report extends mod_quiz\local\reports\report_base {
-
     /**
      * Display the live monitor report.
      *

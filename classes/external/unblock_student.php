@@ -35,6 +35,7 @@ use external_single_structure;
 use external_value;
 use mod_quiz\quiz_attempt;
 use moodle_exception;
+use quiz_livequizmonitor\local\manager\monitor_manager;
 use quiz_livequizmonitor\local\manager\onesession_manager;
 use quiz_livequizmonitor\local\manager\supervision_scope_manager;
 
@@ -42,7 +43,6 @@ use quiz_livequizmonitor\local\manager\supervision_scope_manager;
  * Unblocks a student attempt locked by quizaccess_onesession.
  */
 class unblock_student extends external_api {
-
     /**
      * Parameter description.
      *
@@ -92,7 +92,7 @@ class unblock_student extends external_api {
         if ((int) $attempt->userid !== (int) $params['userid'] || (int) $attempt->quiz !== (int) $quiz->id) {
             throw new \invalid_parameter_exception('Invalid attempt for student');
         }
-        if (!in_array($attempt->state, [quiz_attempt::IN_PROGRESS, quiz_attempt::OVERDUE], true)) {
+        if (!monitor_manager::is_active_attempt_state($attempt->state)) {
             throw new \moodle_exception('onesession:errnotinprogress', 'quiz_livequizmonitor');
         }
 
