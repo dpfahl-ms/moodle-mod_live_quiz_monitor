@@ -110,14 +110,28 @@ class behat_quiz_livequizmonitor extends behat_base {
         ], '*', MUST_EXIST);
 
         $context = \context_module::instance($cm->id);
-        $event = \quizaccess_onesession\event\attempt_blocked::create([
+
+        // Calling quizaccess_onesession\event\attempt_blocked->trigger() here
+        // doesn't add a database row so we fake it.
+        $data = (object) [
+            'eventname' => '\quizaccess_onesession\event\attempt_blocked',
+            'component' => 'quizaccess_onesession',
+            'action' => 'blocked',
+            'target' => 'attempt',
+            'objecttable' => 'quiz_attempts',
             'objectid' => $attempt->id,
             'relateduserid' => $attempt->userid,
+            'crud' => 'r',
+            'edulevel' => 2,
+            'contextid' => $context->id,
+            'contextlevel' => 70,
+            'contextinstanceid' => $context->instanceid,
+            'userid' => $attempt->userid,
             'courseid' => $cm->course,
-            'context' => $context,
-            'other' => ['quizid' => $quiz->id],
-        ]);
-        $event->trigger();
+            'timecreated' => time(),
+            'other' => json_encode(['quizid' => $quiz->id]),
+        ];
+        $DB->insert_record('logstore_standard_log', $data);
     }
 
     /**
