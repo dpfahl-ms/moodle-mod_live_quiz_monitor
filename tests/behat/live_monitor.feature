@@ -33,7 +33,7 @@ Feature: Live quiz monitor report
     And I log in as "teacher1"
 
   Scenario: Teacher opens Live Monitor report
-    When I am on the live monitor report for "Quiz 1"
+    Given I am on the live monitor report for "Quiz 1"
     Then I should see "Live Monitor"
     And I should see "Sam Student"
     And I should see "Not started"
@@ -43,15 +43,15 @@ Feature: Live quiz monitor report
 
   @javascript
   Scenario: Search narrows the student list
-    When I am on the live monitor report for "Quiz 1"
-    And I set the field "Search students…" to "Sam"
+    Given I am on the live monitor report for "Quiz 1"
+    When I set the field "Search students…" to "Sam"
     Then I should see "Sam Student"
-    And I should not see "Alex Other"
+    But I should not see "Alex Other"
 
   @javascript
   Scenario: Clear filters restores the full student list
-    When I am on the live monitor report for "Quiz 1"
-    And I set the field "Search students…" to "Sam"
+    Given I am on the live monitor report for "Quiz 1"
+    When I set the field "Search students…" to "Sam"
     And I click on "Clear filters" "button"
     Then I should see "Sam Student"
     And I should see "Alex Other"
@@ -59,17 +59,19 @@ Feature: Live quiz monitor report
   @javascript
   Scenario: Status filter shows only in-progress students
     Given I am on the "Quiz 1" "quiz activity" page logged in as "student1"
-    And I press "Attempt quiz now"
+    And I press "Attempt quiz"
+    And I press "Start attempt"
     And I log in as "teacher1"
     When I am on the live monitor report for "Quiz 1"
     And I click on "In progress (1)" "button"
     Then I should see "Sam Student"
-    And I should not see "Alex Other"
+    But I should not see "Alex Other"
 
   @javascript @extend
   Scenario: Individual extend modal opens from row action menu
     Given I am on the "Quiz 1" "quiz activity" page logged in as "student1"
-    And I press "Attempt quiz now"
+    And I press "Attempt quiz"
+    And I press "Start attempt"
     And I log in as "teacher1"
     When I am on the live monitor report for "Quiz 1"
     And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
@@ -80,7 +82,8 @@ Feature: Live quiz monitor report
   @javascript @extend
   Scenario: Bulk extend button opens modal when students are in progress
     Given I am on the "Quiz 1" "quiz activity" page logged in as "student1"
-    And I press "Attempt quiz now"
+    And I press "Attempt quiz"
+    And I press "Start attempt"
     And I log in as "teacher1"
     When I am on the live monitor report for "Quiz 1"
     And I click on "Extend time" "button"
@@ -89,38 +92,40 @@ Feature: Live quiz monitor report
 
   @javascript @notes
   Scenario: Teacher adds and edits a student note
-    When I am on the live monitor report for "Quiz 1"
-    And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
-    And I click on "Add note" "link"
-    And I set the field "Note for Sam Student" to "Requested bathroom break"
+    Given I am on the live monitor report for "Quiz 1"
+    And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element" in the "Sam Student" "table_row"
+    And I click on "Add note" "link" in the "Sam Student" "table_row"
+    And I set the field "Add a supervision note for this student." to "Requested bathroom break"
     And I click on "Save" "button"
-    And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
-    Then I should see "Edit note" "link"
-    When I click on "Edit note" "link"
-    Then the field "Note for Sam Student" should have the value "Requested bathroom break"
+    When I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element" in the "Sam Student" "table_row"
+    Then "Edit note" "link" should exist
+    When I click on "Edit note" "link" in the "Sam Student" "table_row"
+    Then the field "Add a supervision note for this student." matches value "Requested bathroom break"
 
   @javascript @onesession
   Scenario: B1 - No unblock UI when onesession is off
-    When I am on the live monitor report for "Quiz 1"
-    And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
-    Then I should not see "Unblock user" "link"
+    Given I am on the live monitor report for "Quiz 1"
+    When I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
+    Then "Unblock user" "link" should not exist
 
   @javascript @onesession
   Scenario: B2 - Unblock menu visible but disabled on non-blocked row
     Given onesession concurrent session rule is enabled for quiz "Quiz 1"
     And I am on the "Quiz 1" "quiz activity" page logged in as "student1"
-    And I press "Attempt quiz now"
+    And I press "Attempt quiz"
+    And I press "Start attempt"
     And I log in as "teacher1"
     When I am on the live monitor report for "Quiz 1"
     And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
-    Then I should see "Unblock user" "link"
+    Then "Unblock user" "link" should exist
     And ".livequizmonitor-row-actions [data-action='unblock-student'].disabled" "css_element" should exist
 
   @javascript @onesession
   Scenario: B3 - Red flag and enabled unblock after block event
     Given onesession concurrent session rule is enabled for quiz "Quiz 1"
     And I am on the "Quiz 1" "quiz activity" page logged in as "student1"
-    And I press "Attempt quiz now"
+    And I press "Attempt quiz"
+    And I press "Start attempt"
     And the student "student1" is blocked by onesession on quiz "Quiz 1"
     And I log in as "teacher1"
     When I am on the live monitor report for "Quiz 1"
@@ -130,12 +135,13 @@ Feature: Live quiz monitor report
   Scenario: B4 - Unblock confirmation modal opens
     Given onesession concurrent session rule is enabled for quiz "Quiz 1"
     And I am on the "Quiz 1" "quiz activity" page logged in as "student1"
-    And I press "Attempt quiz now"
+    And I press "Attempt quiz"
+    And I press "Start attempt"
     And the student "student1" is blocked by onesession on quiz "Quiz 1"
     And I log in as "teacher1"
     When I am on the live monitor report for "Quiz 1"
-    And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
-    And I click on "Unblock user" "link"
+    And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element" in the "Sam Student" "table_row"
+    And I click on "Unblock user" "link" in the "Sam Student" "table_row"
     Then I should see "Unblock Sam Student"
     And I should see "Allow this student to continue the quiz attempt on another device or browser."
 
@@ -143,13 +149,15 @@ Feature: Live quiz monitor report
   Scenario: B5 - Post-confirm flag gone and unblock disabled
     Given onesession concurrent session rule is enabled for quiz "Quiz 1"
     And I am on the "Quiz 1" "quiz activity" page logged in as "student1"
-    And I press "Attempt quiz now"
+    And I press "Attempt quiz"
+    And I press "Start attempt"
     And the student "student1" is blocked by onesession on quiz "Quiz 1"
     And I log in as "teacher1"
     When I am on the live monitor report for "Quiz 1"
-    And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element"
-    And I click on "Unblock user" "link"
-    And I click on "Unblock" "button"
+    And I click on ".livequizmonitor-row-actions .dropdown-toggle" "css_element" in the "Sam Student" "table_row"
+    And I click on "Unblock user" "link" in the "Sam Student" "table_row"
+    And I click on "Unblock" "button" in the ".modal-dialog" "css_element"
+    And I wait "6" seconds
     Then ".livequizmonitor-blocked-flag" "css_element" should not exist
     And ".livequizmonitor-row-actions [data-action='unblock-student'].disabled" "css_element" should exist
 
@@ -169,7 +177,7 @@ Feature: Live quiz monitor report
 
   @javascript @cohortsync
   Scenario: Unenrolled student row disappears without reload
-    When I am on the live monitor report for "Quiz 1"
+    Given I am on the live monitor report for "Quiz 1"
     Then I should see "Alex Other"
     When I unenrol user "student2" from course "C1"
     And I wait "6" seconds
@@ -178,7 +186,7 @@ Feature: Live quiz monitor report
   @javascript @cohortsync
   Scenario: Status update still works without page reload
     Given I am on the "Quiz 1" "quiz activity" page logged in as "student1"
-    And I press "Attempt quiz now"
+    And I press "Attempt quiz"
     And I log in as "teacher1"
     When I am on the live monitor report for "Quiz 1"
     And I wait "6" seconds
